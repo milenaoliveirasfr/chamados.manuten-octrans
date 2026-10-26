@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abertura de Chamados — Manutenção de Frota · SES-PE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+:root{
+  --bg:#F6F2EB; --panel:#FFFFFF; --ink:#2B2724; --muted:#8A8178; --line:#E7E0D5;
+  --accent:#3E6E68; --accent-soft:#E3ECEA; --warn:#C08A5E; --ok:#5C8A6B; --bad:#B0564A; --info:#6E8BA0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:'Hanken Grotesk',sans-serif;line-height:1.5;
+  background-image:radial-gradient(circle at 12% 8%,rgba(62,110,104,.06),transparent 42%),radial-gradient(circle at 88% 4%,rgba(192,138,94,.06),transparent 40%);}
+.wrap{max-width:1280px;margin:0 auto;padding:0 28px 72px}
+.hidden{display:none !important}
+h1,h2,h3{font-family:'Fraunces',serif;font-weight:600}
+/* ===== LOGIN GATE ===== */
+#gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto;
+  background-image:radial-gradient(circle at 12% 8%,rgba(62,110,104,.08),transparent 42%),radial-gradient(circle at 88% 4%,rgba(192,138,94,.08),transparent 40%);}
+#gate .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;max-width:560px;width:100%;
+  padding:40px 34px;text-align:center;box-shadow:0 24px 60px rgba(43,39,36,.12)}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:18px}
+.eyebrow span{width:22px;height:1px;background:var(--accent);display:inline-block}
+#gate h1{font-size:clamp(21px,3.3vw,29px);line-height:1.12;letter-spacing:-.01em;color:var(--ink)}
+#gate .sub{font-family:'Fraunces',serif;font-style:italic;color:var(--accent);font-size:18px;margin-top:6px;display:block}
+#gate .hint{font-size:12.5px;color:var(--muted);margin:14px 0 4px}
+/* logo 3D reveal */
+.logo-wrap{position:relative;width:250px;height:172px;margin:6px auto 4px;perspective:950px}
+.logo-badge{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:transform .7s ease,opacity .55s ease;transform-style:preserve-3d;cursor:pointer}
+.logo-badge svg{width:150px;height:auto;filter:drop-shadow(0 8px 20px rgba(43,39,36,.14))}
+.access{position:absolute;inset:0;display:flex;gap:16px;align-items:center;justify-content:center;opacity:0;transform:scale(.88);pointer-events:none;transition:opacity .5s ease,transform .5s ease}
+.logo-wrap:hover .logo-badge,.logo-wrap.revealed .logo-badge{transform:rotateY(360deg);opacity:.07}
+.logo-wrap:hover .access,.logo-wrap.revealed .access{opacity:1;transform:scale(1);pointer-events:auto}
+.acard{font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:8px;width:118px;height:118px;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:16px;cursor:pointer;color:var(--ink);box-shadow:0 6px 18px rgba(43,39,36,.08);transition:transform .15s,border-color .15s,box-shadow .15s}
+.acard:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 24px rgba(43,39,36,.15)}
+.acard svg{width:30px;height:30px;color:var(--accent)}
+.acard b{font-size:14px;letter-spacing:.02em}
+.acard span{font-size:9.5px;color:var(--muted);line-height:1.25;text-align:center;padding:0 6px}
+/* panels de login */
+.panel{display:none;margin-top:22px;text-align:left}
+.panel.on{display:block;animation:fade .3s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.ltabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.ltabs button{font-family:inherit;font-size:13.5px;font-weight:600;border:none;background:none;color:var(--muted);padding:10px 16px;cursor:pointer;position:relative}
+.ltabs button.active{color:var(--accent)}
+.ltabs button.active::after{content:'';position:absolute;left:12px;right:12px;bottom:-1px;height:3px;background:var(--accent);border-radius:3px 3px 0 0}
+.lform{display:none;flex-direction:column;gap:13px}
+.lform.on{display:flex}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding-left:2px}
+.fg input,.fg select,.fg textarea{font-family:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:11px 13px;transition:border-color .15s;width:100%}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--accent)}
+.fg textarea{min-height:92px;resize:vertical}
+.btn{font-family:inherit;font-size:14px;font-weight:600;border-radius:9px;padding:12px 16px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
+.btn:hover{background:#345c57}
+.btn svg{width:16px;height:16px}
+.btn.ghost{background:var(--panel);color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{background:var(--bg);color:var(--accent);border-color:var(--accent)}
+.btn.sm{font-size:12.5px;padding:8px 12px}
+.msg{font-size:12.5px;border-radius:8px;padding:10px 12px;display:none;margin-top:4px}
+.msg.err{display:block;background:#f6e6df;color:#8a4a30;border:1px solid #ecd3c7}
+.msg.ok{display:block;background:#e8f1ee;color:#2f5c54;border:1px solid #cfe2dd}
+.back{font-family:inherit;font-size:12.5px;font-weight:600;border:none;background:none;color:var(--accent);cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:10px 0 0}
+.back:hover{text-decoration:underline}
+.back svg{width:15px;height:15px}
+/* ===== APP TOP BAR ===== */
+.app{display:none;max-width:1280px;margin:0 auto;padding:0 28px 72px}
+.app.on{display:block}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 0 6px;flex-wrap:wrap}
+.who{display:flex;align-items:center;gap:9px;font-size:13px;color:#2f5c54;background:#e8f1ee;border:1px solid #cfe2dd;border-radius:9px;padding:8px 12px}
+.who svg{width:16px;height:16px}
+.who.sup{color:#8a5a43;background:#fef3ee;border-color:#f6d6c4}
+.hero{margin:12px 0 8px}
+.hero .eyebrow{margin-bottom:10px}
+.hero h1{font-size:clamp(23px,3.1vw,32px);line-height:1.1;color:var(--ink)}
+.hero h1 em{font-style:italic;color:var(--accent)}
+.hero p{font-size:13.8px;color:var(--muted);line-height:1.55;margin-top:8px;max-width:860px}
+.nav{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 4px;border-bottom:1px solid var(--line)}
+.nav .tab{font-family:inherit;font-size:13.5px;font-weight:600;border:none;background:none;color:var(--muted);cursor:pointer;padding:11px 16px;display:inline-flex;align-items:center;gap:7px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.nav .tab svg{width:16px;height:16px}
+.nav .tab:hover{color:var(--accent)}
+.nav .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.page{display:none;animation:fade .25s ease}
+.page.active{display:block}
+/* ===== CARDS / FORM ===== */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px}
+.card h3{font-size:16px;color:var(--ink);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.card h3 svg{width:18px;height:18px;color:var(--accent)}
+.card .desc{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+.formgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.formgrid .full{grid-column:1/-1}
+.req{color:var(--bad)}
+.filegrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:4px}
+.filebox{border:1.5px dashed var(--line);border-radius:12px;padding:14px;background:var(--bg);transition:border-color .15s}
+.filebox:hover{border-color:var(--accent)}
+.filebox .fl-h{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink)}
+.filebox .fl-h svg{width:16px;height:16px;color:var(--accent)}
+.filebox .fl-d{font-size:11px;color:var(--muted);margin:3px 0 9px;line-height:1.4}
+.filebox input[type=file]{font-size:11.5px;width:100%}
+.filebox .prev{margin-top:9px;display:none}
+.filebox .prev.on{display:block}
+.filebox .prev img,.filebox .prev video{max-width:100%;max-height:150px;border-radius:8px;border:1px solid var(--line)}
+.filebox .prev .fn{font-size:11px;color:var(--ok);margin-top:5px;display:flex;align-items:center;gap:5px}
+.filebox .prev .fn svg{width:13px;height:13px}
+.submitbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;border-left:4px solid var(--line)}
+.kpi.k-open{border-left-color:var(--info)}
+.kpi.k-prog{border-left-color:var(--warn)}
+.kpi.k-done{border-left-color:var(--ok)}
+.kpi.k-fb{border-left-color:var(--accent)}
+.kpi .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:7px}
+.kpi .lab svg{width:15px;height:15px;color:var(--accent)}
+.kpi .val{font-family:'Fraunces',serif;font-weight:600;font-size:27px;color:var(--ink);margin-top:9px;line-height:1}
+.kpi .sub{font-size:11.5px;color:var(--muted);margin-top:6px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.chart{width:100%;height:300px}
+.sec{font-size:19px;color:var(--ink);margin:26px 0 12px;display:flex;align-items:center;gap:9px}
+.sec svg{width:19px;height:19px;color:var(--accent)}
+/* tables */
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+table.tbl{border-collapse:collapse;width:100%;font-size:12.5px;min-width:720px}
+table.tbl th,table.tbl td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+table.tbl th{background:var(--bg);color:var(--muted);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;position:sticky;top:0}
+table.tbl tbody tr:hover{background:var(--bg)}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid}
+.badge.b-open{color:var(--info);background:#eef3f7;border-color:#cfe0ec}
+.badge.b-prog{color:#8a5a43;background:#fef3ee;border-color:#f6d6c4}
+.badge.b-done{color:#2f6b4a;background:#e8f1ee;border-color:#cfe2dd}
+.badge.b-fb{color:var(--accent);background:var(--accent-soft);border-color:#cfe2dd}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px}
+.toolbar .fg{min-width:160px}
+.rank{list-style:none;display:flex;flex-direction:column;gap:8px}
+.rank li{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.rank .pos{font-family:'Fraunces',serif;font-weight:700;font-size:18px;color:var(--accent);width:28px}
+.rank .nm{flex:1;font-size:13px;font-weight:600;color:var(--ink)}
+.rank .ct{font-size:12.5px;color:var(--muted)}
+.thumb{width:46px;height:46px;border-radius:8px;object-fit:cover;border:1px solid var(--line);cursor:pointer}
+/* status em tempo real */
+.livebar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.livepulse{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:var(--ink,#2B2724);font-size:13px}
+.livepulse .pdot{width:10px;height:10px;border-radius:50%;background:#5C8A6B;box-shadow:0 0 0 0 rgba(92,138,107,.6);animation:lpulse 1.6s infinite}
+@keyframes lpulse{0%{box-shadow:0 0 0 0 rgba(92,138,107,.55)}70%{box-shadow:0 0 0 10px rgba(92,138,107,0)}100%{box-shadow:0 0 0 0 rgba(92,138,107,0)}}
+.liveupd{font-size:12px;color:var(--muted)}
+.livesrc{font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--line);padding:3px 9px;border-radius:999px}
+.livebar #live-refresh{margin-left:auto}
+.statusboard{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:1000px){.statusboard{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.statusboard{grid-template-columns:1fr}}
+.stcol{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;min-height:120px}
+.stcol .sth{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;padding-bottom:9px;border-bottom:2px solid var(--line)}
+.stcol .sth .nm{font-weight:800;font-size:13.5px}
+.stcol .sth .qt{font-weight:800;font-size:13px;color:#fff;border-radius:999px;padding:2px 10px;min-width:26px;text-align:center}
+.stcol.c-open{border-top:4px solid #B0564A}.stcol.c-open .qt{background:#B0564A}
+.stcol.c-prog{border-top:4px solid #C08A5E}.stcol.c-prog .qt{background:#C08A5E}
+.stcol.c-done{border-top:4px solid #5C8A6B}.stcol.c-done .qt{background:#5C8A6B}
+.stcol.c-fb{border-top:4px solid #6E8BA0}.stcol.c-fb .qt{background:#6E8BA0}
+.stcard{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:9px}
+.stcard .cid{font-weight:800;font-size:12px}
+.stcard .cpl{font-size:12px;color:var(--ink,#2B2724);font-weight:700}
+.stcard .cmeta{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5}
+.stcard .cage{display:inline-block;margin-top:5px;font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:999px;background:#EFEAE4;color:#6b6258}
+.stcard .cage.warn{background:#F6E3C9;color:#8a5a1e}
+.stcard .cage.crit{background:#F3D2CD;color:#a33}
+.stcol .empty{font-size:12px;color:var(--muted);text-align:center;padding:14px 0}
+/* modal */
+.modal{position:fixed;inset:0;z-index:10000;background:rgba(30,26,22,.55);display:none;align-items:center;justify-content:center;padding:24px}
+.modal.on{display:flex}
+.modal .mbox{background:var(--panel);border-radius:16px;max-width:820px;width:100%;max-height:88vh;overflow:auto;padding:24px}
+.modal .mclose{float:right;border:none;background:none;cursor:pointer;color:var(--muted)}
+.modal img,.modal video{max-width:100%;border-radius:10px;border:1px solid var(--line)}
+.notice{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:#2f5c54;background:#e8f1ee;border:1px solid #cfe2dd;border-radius:10px;padding:12px 14px;margin:10px 0}
+.notice svg{width:17px;height:17px;flex:0 0 auto;margin-top:1px}
+.notice.warn{color:#8a5a43;background:#fef3ee;border-color:#f6d6c4}
+@media(max-width:820px){.formgrid,.filegrid,.g2{grid-template-columns:1fr}.app{padding:0 16px 56px}#gate .card{padding:28px 20px}.logo-wrap{width:220px}}
+.otherwrap{display:none;margin-top:8px}
+.otherwrap.on{display:block}
+.inlineform{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-top:10px}
+.inlineform .btn{height:fit-content}
+.cloudrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--bad);display:inline-block}
+.dot.on{background:var(--ok)}
+.cfggrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+.cfggrid .full{grid-column:1/-1}
+.pill{font-size:11px;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:var(--bg);cursor:pointer;color:var(--ink);display:inline-flex;align-items:center;gap:6px}
+.pill svg{width:14px;height:14px}
+@media(max-width:820px){.inlineform,.cfggrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<!-- ===================== LOGIN GATE ===================== -->
+<div id="gate">
+  <div class="card">
+    <div class="eyebrow"><span></span> Secretaria de Saúde / PE &middot; CTRANS <span></span></div>
+    <div id="choose">
+      <div class="logo-wrap" id="logoWrap" title="Passe o mouse na logo para escolher o acesso">
+        <div class="logo-badge" id="logoBadge">
+          <svg viewBox="0 0 160 120" xmlns="http://www.w3.org/2000/svg" aria-label="CTRANS">
+            <rect x="6" y="6" width="148" height="108" rx="16" fill="#E3ECEA" stroke="#3E6E68" stroke-width="2"/>
+            <path d="M30 78 l10-30 h40 l14 18 h30 v12 z" fill="#3E6E68"/>
+            <circle cx="52" cy="80" r="9" fill="#2B2724"/><circle cx="52" cy="80" r="3.5" fill="#F6F2EB"/>
+            <circle cx="104" cy="80" r="9" fill="#2B2724"/><circle cx="104" cy="80" r="3.5" fill="#F6F2EB"/>
+            <path d="M118 34 l5 10 11 1 -8 8 2 11 -10 -5 -10 5 2 -11 -8 -8 11 -1z" fill="#C08A5E"/>
+            <text x="80" y="34" font-family="Fraunces,serif" font-size="20" font-weight="700" fill="#2B2724" text-anchor="middle">CTRANS</text>
+          </svg>
+        </div>
+        <div class="access">
+          <button class="acard" id="ac-manut" type="button"><i data-lucide="wrench"></i><b>MANUTENÇÃO</b><span>Abrir e acompanhar chamados</span></button>
+          <button class="acard" id="ac-ctrans" type="button"><i data-lucide="shield-check"></i><b>CTRANS</b><span>Gestão geral (supervisores)</span></button>
+        </div>
+      </div>
+      <h1>Central de Chamados</h1>
+      <div class="sub">Manutenção de Frota</div>
+      <p class="hint">Passe o mouse (ou toque) na logo e escolha o seu acesso.</p>
+    </div>
+    <div class="panel" id="panel-manut">
+      <div class="eyebrow" style="margin-bottom:8px"><span></span> Acesso MANUTENÇÃO <span></span></div>
+      <div class="ltabs">
+        <button class="active" data-mt="login">Entrar</button>
+        <button data-mt="reg">Criar usuário</button>
+      </div>
+      <form class="lform on" id="form-mlogin" autocomplete="off">
+        <div class="fg"><label>Usuário</label><input type="text" id="ml-user" required></div>
+        <div class="fg"><label>Senha</label><input type="password" id="ml-pass" required></div>
+        <div class="fg"><label>Código de acesso</label><input type="password" id="ml-cod" required placeholder="••••••"></div>
+        <div class="msg" id="ml-msg"></div>
+        <button class="btn" type="submit"><i data-lucide="log-in"></i> Entrar</button>
+      </form>
+      <form class="lform" id="form-mreg" autocomplete="off">
+        <div class="fg"><label>Unidade</label><select id="mr-unidade" required></select>
+          <div class="otherwrap" id="mr-unidade-other"><input type="text" id="mr-unidade-new" placeholder="Digite a nova unidade e ela será salva"></div>
+        </div>
+        <div class="fg"><label>Nome completo</label><input type="text" id="mr-nome" required></div>
+        <div class="fg"><label>Usuário</label><input type="text" id="mr-user" required></div>
+        <div class="fg"><label>Senha</label><input type="password" id="mr-pass" required></div>
+        <div class="fg"><label>Código de acesso</label><input type="password" id="mr-cod" required placeholder="Crie um código (não fica visível)"></div>
+        <div class="fg"><label>E-mail</label><input type="email" id="mr-email" required></div>
+        <div class="msg" id="mr-msg"></div>
+        <button class="btn" type="submit"><i data-lucide="user-plus"></i> Criar usuário</button>
+      </form>
+      <button class="back" data-back><i data-lucide="arrow-left"></i> Voltar à escolha de acesso</button>
+    </div>
+    <div class="panel" id="panel-ctrans">
+      <div class="eyebrow" style="margin-bottom:8px"><span></span> Acesso CTRANS · Supervisão <span></span></div>
+      <form class="lform on" id="form-clogin" autocomplete="off">
+        <div class="fg"><label>Usuário</label><input type="text" id="cl-user" required placeholder="Supervisor1_manutenção"></div>
+        <div class="fg"><label>Senha</label><input type="password" id="cl-pass" required></div>
+        <div class="fg"><label>Código de acesso</label><input type="password" id="cl-cod" required placeholder="••••••"></div>
+        <div class="msg" id="cl-msg"></div>
+        <button class="btn" type="submit"><i data-lucide="shield-check"></i> Entrar na gestão</button>
+      </form>
+      <button class="back" data-back><i data-lucide="arrow-left"></i> Voltar à escolha de acesso</button>
+    </div>
+  </div>
+</div>
+<!-- ===================== APP MANUTENÇÃO ===================== -->
+<div class="app" id="app-manut">
+  <div class="topbar">
+    <div class="who" id="m-who"><i data-lucide="user"></i><span>Usuário</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span class="cloudrow"><span class="dot" id="m-cloud-dot"></span><span id="m-cloud-txt">Nuvem: local</span></span>
+      <button class="btn ghost sm" id="m-logout"><i data-lucide="log-out"></i> Sair</button>
+    </div>
+  </div>
+  <div class="hero">
+    <div class="eyebrow"><span></span> Acesso Manutenção</div>
+    <h1>Abertura e <em>acompanhamento</em> de chamados</h1>
+    <p>Registre solicitações de manutenção dos veículos da sua unidade e acompanhe o andamento de cada chamado em tempo real.</p>
+  </div>
+  <div class="nav">
+    <button class="tab active" data-mpage="abrir"><i data-lucide="file-plus"></i> Abrir chamado</button>
+    <button class="tab" data-mpage="gestao"><i data-lucide="layout-dashboard"></i> Painel de gestão</button>
+  </div>
+
+  <!-- PÁGINA 1: ABRIR CHAMADO -->
+  <div class="page active" id="mpage-abrir">
+    <form id="form-chamado">
+      <div class="card">
+        <h3><i data-lucide="clipboard-list"></i> Dados do veículo e da solicitação</h3>
+        <p class="desc">Centraliza o registro de solicitações e cobranças junto às locadoras vinculadas à Secretaria. Campos com <span class="req">*</span> são obrigatórios.</p>
+        <div class="formgrid">
+          <div class="fg"><label>Placa do veículo <span class="req">*</span></label><input type="text" id="c-placa" required placeholder="ABC1D23"></div>
+          <div class="fg"><label>Marca e modelo <span class="req">*</span></label><select id="c-modelo" required></select>
+            <div class="otherwrap" id="c-modelo-other"><input type="text" id="c-modelo-new" placeholder="Digite a marca/modelo"></div>
+          </div>
+          <div class="fg"><label>Unidade <span class="req">*</span></label><select id="c-unidade" required></select>
+            <div class="otherwrap" id="c-unidade-other"><input type="text" id="c-unidade-new" placeholder="Digite a nova unidade e ela será salva"></div>
+          </div>
+          <div class="fg"><label>Locadora <span class="req">*</span></label><select id="c-locadora" required></select>
+            <div class="otherwrap" id="c-locadora-other"><input type="text" id="c-locadora-new" placeholder="Digite a locadora"></div>
+          </div>
+          <div class="fg"><label>Solicitante responsável <span class="req">*</span></label><input type="text" id="c-solic" required></div>
+          <div class="fg"><label>E-mail do solicitante <span class="req">*</span></label><input type="email" id="c-email" required></div>
+          <div class="fg"><label>Quilometragem <span class="req">*</span></label><input type="text" id="c-km" required placeholder="Ex.: 85.420 km"></div>
+          <div class="fg"><label>Motivo da solicitação <span class="req">*</span></label><select id="c-motivo" required></select>
+            <div class="otherwrap" id="c-motivo-other"><input type="text" id="c-motivo-new" placeholder="Digite o motivo"></div>
+          </div>
+        </div>
+        <div style="margin-top:12px"><button type="button" class="pill" id="btn-add-loc"><i data-lucide="plus-circle"></i> Adicionar locadora e e-mail</button></div>
+        <div class="otherwrap" id="add-loc-wrap">
+          <div class="inlineform">
+            <div class="fg"><label>Nome da locadora</label><input type="text" id="al-nome"></div>
+            <div class="fg"><label>E-mail(s) (separar por vírgula)</label><input type="text" id="al-email" placeholder="email1@dom.com, email2@dom.com"></div>
+            <button type="button" class="btn sm" id="al-save"><i data-lucide="save"></i> Salvar</button>
+          </div>
+          <div class="msg" id="al-msg"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3><i data-lucide="paperclip"></i> Anexos · Evidências</h3>
+        <p class="desc">Selecione imagens ou vídeos. Os arquivos ficam salvos junto ao chamado e disponíveis para a CTRANS e para o solicitante.</p>
+        <div class="filegrid">
+          <div class="filebox">
+            <div class="fl-h"><i data-lucide="scan-line"></i> Foto da Placa <span class="req">*</span></div>
+            <div class="fl-d">Imagem nítida mostrando a placa dianteira ou traseira do veículo.</div>
+            <input type="file" id="f-placa" accept="image/*,video/*" data-prev="p-placa">
+            <div class="prev" id="p-placa"></div>
+          </div>
+          <div class="filebox">
+            <div class="fl-h"><i data-lucide="camera"></i> Evidências da Solicitação</div>
+            <div class="fl-d">Imagem/vídeo evidenciando o que precisa ser trocado ou reparado (pneu, sinistro, pane, reboque…).</div>
+            <input type="file" id="f-evid" accept="image/*,video/*" data-prev="p-evid">
+            <div class="prev" id="p-evid"></div>
+          </div>
+          <div class="filebox">
+            <div class="fl-h"><i data-lucide="gauge"></i> Foto — Quilometragem no Painel <span class="req">*</span></div>
+            <div class="fl-d">Imagem nítida mostrando o painél do veículo com a quilometragem e a data.</div>
+            <input type="file" id="f-km" accept="image/*,video/*" data-prev="p-km">
+            <div class="prev" id="p-km"></div>
+          </div>
+          <div class="filebox">
+            <div class="fl-h"><i data-lucide="file-text"></i> Boletim de Ocorrência</div>
+            <div class="fl-d">Anexar o Boletim de Ocorrência caso haja a necessidade.</div>
+            <input type="file" id="f-bo" accept="image/*,video/*,.pdf" data-prev="p-bo">
+            <div class="prev" id="p-bo"></div>
+          </div>
+          <div class="filebox">
+            <div class="fl-h"><i data-lucide="clipboard-check"></i> Ficha de Avaria</div>
+            <div class="fl-d">Anexar a ficha de avaria caso haja a necessidade.</div>
+            <input type="file" id="f-fa" accept="image/*,video/*,.pdf" data-prev="p-fa">
+            <div class="prev" id="p-fa"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3><i data-lucide="message-square-text"></i> Descrição do ocorrido <span class="req">*</span></h3>
+        <p class="desc">Descreva tudo que aconteceu para que a equipe de transporte possa entender melhor a situação atual.</p>
+        <div class="fg"><textarea id="c-desc" required placeholder="Descreva o ocorrido…"></textarea></div>
+      </div>
+
+      <div class="notice" id="c-email-note"><i data-lucide="mail"></i><span></span></div>
+      <div class="msg" id="c-msg"></div>
+      <div class="submitbar">
+        <button class="btn" type="submit"><i data-lucide="send"></i> Abrir chamado</button>
+        <button class="btn ghost" type="reset"><i data-lucide="eraser"></i> Limpar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- PÁGINA 2: PAINEL DE GESTÃO (do solicitante) -->
+  <div class="page" id="mpage-gestao">
+    <div class="notice"><i data-lucide="info"></i><span>Painel atualizado automaticamente a cada chamado aberto. Mostra os chamados da sua unidade e o andamento informado pela CTRANS.</span></div>
+    <div style="margin-bottom:12px"><button class="btn ghost sm" id="m-pdf"><i data-lucide="file-down"></i> Relatório executivo mensal (PDF)</button></div>
+    <div class="kpis" id="m-kpis"></div>
+    <div class="grid g2">
+      <div class="card"><h3><i data-lucide="pie-chart"></i> Chamados por situação</h3><div class="chart" id="m-ch-status"></div></div>
+      <div class="card"><h3><i data-lucide="bar-chart-3"></i> Chamados por motivo</h3><div class="chart" id="m-ch-motivo"></div></div>
+    </div>
+    <div class="sec"><i data-lucide="trophy"></i> Ranking — veículos que mais abrem chamados (sua unidade)</div>
+    <ul class="rank" id="m-rank"></ul>
+    <div class="sec"><i data-lucide="list"></i> Meus chamados</div>
+    <div class="tablewrap"><table class="tbl" id="m-tbl"></table></div>
+  </div>
+</div>
+<!-- ===================== APP CTRANS (supervisão) ===================== -->
+<div class="app" id="app-ctrans">
+  <div class="topbar">
+    <div class="who sup" id="c-who"><i data-lucide="shield-check"></i><span>Supervisor</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span class="cloudrow"><span class="dot" id="c-cloud-dot"></span><span id="c-cloud-txt">Nuvem: local</span></span>
+      <button class="btn ghost sm" id="c-cloud-btn"><i data-lucide="cloud"></i> Nuvem</button>
+      <button class="btn ghost sm" id="c-pdf"><i data-lucide="file-down"></i> Relatório mensal (PDF)</button>
+      <button class="btn ghost sm" id="c-logout"><i data-lucide="log-out"></i> Sair</button>
+    </div>
+  </div>
+  <div class="hero">
+    <div class="eyebrow"><span></span> Gestão CTRANS</div>
+    <h1>Acompanhamento <em>geral</em> de chamados</h1>
+    <p>Visão consolidada de todos os chamados abertos pelas unidades: ranking, comparativo de períodos, motivos e veículos críticos. Apenas supervisores da CTRANS atualizam a situação e a data de cada chamado.</p>
+  </div>
+  <div class="nav">
+    <button class="tab active" data-cpage="geral"><i data-lucide="layout-dashboard"></i> Painel geral</button>
+    <button class="tab" data-cpage="status"><i data-lucide="activity"></i> Status em tempo real</button>
+    <button class="tab" data-cpage="detalhe"><i data-lucide="table-2"></i> Detalhamento</button>
+  </div>
+
+  <!-- PAINEL GERAL -->
+  <div class="page active" id="cpage-geral">
+    <div class="toolbar">
+      <div class="fg"><label>Período A — de</label><input type="date" id="cp-a-ini"></div>
+      <div class="fg"><label>Período A — até</label><input type="date" id="cp-a-fim"></div>
+      <div class="fg"><label>Período B — de</label><input type="date" id="cp-b-ini"></div>
+      <div class="fg"><label>Período B — até</label><input type="date" id="cp-b-fim"></div>
+      <button class="btn sm" id="cp-cmp"><i data-lucide="git-compare"></i> Comparar</button>
+    </div>
+    <div class="kpis" id="c-kpis"></div>
+    <div class="grid g2">
+      <div class="card"><h3><i data-lucide="pie-chart"></i> Situação dos chamados</h3><div class="chart" id="c-ch-status"></div></div>
+      <div class="card"><h3><i data-lucide="bar-chart-3"></i> Motivo mais solicitado</h3><div class="chart" id="c-ch-motivo"></div></div>
+      <div class="card"><h3><i data-lucide="building-2"></i> Ranking de unidades</h3><div class="chart" id="c-ch-unidade"></div></div>
+      <div class="card"><h3><i data-lucide="calendar-range"></i> Comparativo de períodos</h3><div class="chart" id="c-ch-cmp"></div></div>
+    </div>
+    <div class="sec"><i data-lucide="building-2"></i> Ranking de unidades (qtd. de chamados)</div>
+    <ul class="rank" id="c-rank-uni"></ul>
+    <div class="sec"><i data-lucide="car"></i> Veículo que mais solicita chamado</div>
+    <ul class="rank" id="c-rank-veic"></ul>
+  </div>
+
+  <!-- STATUS EM TEMPO REAL -->
+  <div class="page" id="cpage-status">
+    <div class="livebar">
+      <span class="livepulse"><span class="pdot"></span> Painel ao vivo</span>
+      <span id="live-upd" class="liveupd">Atualizado agora</span>
+      <span id="live-src" class="livesrc">Fonte: local</span>
+      <button class="btn ghost sm" id="live-refresh"><i data-lucide="refresh-cw"></i> Atualizar</button>
+    </div>
+    <div class="kpis" id="live-kpis"></div>
+    <div class="statusboard" id="live-board"></div>
+  </div>
+
+  <!-- DETALHAMENTO -->
+  <div class="page" id="cpage-detalhe">
+    <div class="notice warn"><i data-lucide="lock"></i><span>Painel exclusivo da CTRANS. Aqui o supervisor atualiza a <b>situação</b> e a <b>data da atualização</b> — tudo fica salvo e visível para o solicitante acompanhar o trâmite.</span></div>
+    <div class="toolbar">
+      <div class="fg"><label>Buscar por placa</label><input type="text" id="cd-busca" placeholder="Digite a placa…"></div>
+      <div class="fg"><label>Unidade</label><select id="cd-f-uni"></select></div>
+      <div class="fg"><label>Situação</label><select id="cd-f-st"></select></div>
+      <button class="btn ghost sm" id="cd-csv"><i data-lucide="download"></i> Exportar CSV</button>
+    </div>
+    <div class="tablewrap"><table class="tbl" id="c-tbl"></table></div>
+  </div>
+</div>
+<!-- ===================== MODAL ===================== -->
+<div class="modal" id="modal">
+  <div class="mbox">
+    <button class="mclose" id="modal-close"><i data-lucide="x"></i></button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+<script>
+/* =================== CONFIG =================== */
+var UNIDADES=['01ª GERES','02ª GERES','03ª GERES','04ª GERES','05ª GERES','06ª GERES','07ª GERES','08ª GERES','09ª GERES','10ª GERES','11ª GERES','12ª GERES','UNITRA - Unidade de Transporte','LOG - Nível Central','COSEMS - Conselho Municipal de Saúde','ESSPE - Escola de Saúde de Pernambuco','CES - Conselho Estadual de Saúde','Hospital Belarmino Correia - HBC','Hospital Ulisses Pernambucano - HUP','Hospital Regional Jaboatão Prazeres - HRJP','Hospital Regional Dom Moura - HRDM','Outros'];
+var MODELOS=['Fiat Toro','Fiat Ducato','Volkswagen Virtus','Volkswagen Polo','Renault Master','Chevrolet Spin','Citroen C3','Outros'];
+var MOTIVOS=['Manutenção Preventiva','Manutenção Corretiva','Troca de Pneu','Pane Elétrica','Reboque','Sinistro','Outros'];
+/* locadora -> e-mail(s) oficiais. Várias podem ter mais de um e-mail (separados por vírgula). */
+var LOCADORAS_BASE={'Andrade Barros Locadora':'agendamento@locadora.net.br','Cs Brasil Frotas':'atendimento.pernambuco@csbrasilservicos.com.br','Locaralpi':'andre@alpirentacar.com.br, comercial@alpirentacar.com.br','Alpi Negociavel':'andre@alpirentacar.com.br, comercial@alpirentacar.com.br','Loc Locadora':'locfilialrecife@gmail.com','Avenida Locadora':'avenidalocadora10@gmail.com'};
+var EMAIL_CTRANS='transportectrans@gmail.com';
+/* customizações salvas (unidades e locadoras adicionadas pelo usuário) */
+var K_UNI='ctrans_unidades_v1', K_LOC='ctrans_locadoras_v1';
+var _loadRaw=function(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}};
+var EXTRA_UNI=_loadRaw(K_UNI,[]);
+var LOCADORAS=Object.assign({},LOCADORAS_BASE,_loadRaw(K_LOC,{}));
+function locadoraNomes(){return Object.keys(LOCADORAS).concat(['Outros']);}
+function unidadeList(){var base=UNIDADES.slice(0,-1);return base.concat(EXTRA_UNI).concat(['Outros']);}
+function saveExtraUni(nome){if(!nome)return;if(unidadeList().indexOf(nome)<0){EXTRA_UNI.push(nome);try{localStorage.setItem(K_UNI,JSON.stringify(EXTRA_UNI));}catch(e){}}}
+function saveLocadora(nome,email){if(!nome)return;LOCADORAS[nome]=email||'';try{localStorage.setItem(K_LOC,JSON.stringify(Object.keys(LOCADORAS).reduce(function(o,k){if(!(k in LOCADORAS_BASE))o[k]=LOCADORAS[k];return o;},{})));}catch(e){}}
+var SUPERVISORES=[{u:'Supervisor1_manutenção',p:'Super1@2026.1',c:'132388'},{u:'Supervisor2_manutenção',p:'Super2@2026.2',c:'132388'},{u:'Supervisor3_manutenção',p:'Super3@2026.3',c:'132388'}];
+var STATUS=['Aberto','Em Andamento','Resolvido','Com Feedback'];
+var STBADGE={'Aberto':'b-open','Em Andamento':'b-prog','Resolvido':'b-done','Com Feedback':'b-fb'};
+/* =================== STORAGE =================== */
+var K_TK='ctrans_chamados_v1', K_US='ctrans_users_v1';
+function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){alert('Armazenamento cheio: anexos muito grandes. O chamado foi registrado nesta sessão, mas reduza o tamanho de imagens/vídeos para salvar permanentemente.');return false;}}
+var TICKETS=load(K_TK,[]);
+var USERS=load(K_US,[]);
+function persistTickets(){save(K_TK,TICKETS);}
+function persistUsers(){save(K_US,USERS);}
+/* =================== UTIL =================== */
+var $=function(s,r){return (r||document).querySelector(s);};
+var $$=function(s,r){return [].slice.call((r||document).querySelectorAll(s));};
+function esc(s){return String(s==null?'':s).replace(/[&<>\"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c];});}
+function icons(){try{if(window.lucide)lucide.createIcons();}catch(e){}}
+function fillSel(sel,arr,ph){var el=$(sel);if(!el)return;el.innerHTML=(ph?'<option value="">'+ph+'</option>':'')+arr.map(function(x){return '<option>'+esc(x)+'</option>';}).join('');}
+function nowISO(){return new Date().toISOString();}
+function fmtDate(iso){if(!iso)return '—';var d=new Date(iso);if(isNaN(d))return esc(iso);return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
+function fmtDay(iso){if(!iso)return '—';var d=new Date(iso);return isNaN(d)?'—':d.toLocaleDateString('pt-BR');}
+function genId(){return 'CH-'+Date.now().toString(36).toUpperCase()+'-'+Math.floor(Math.random()*900+100);}
+function showMsg(sel,txt,ok){var el=$(sel);if(!el)return;el.className='msg '+(ok?'ok':'err');el.textContent=txt;el.style.display='block';}
+var CURRENT=null; /* usuário manutenção logado */
+var SUP=null;      /* supervisor logado */
+/* =================== NUVEM (Supabase) + EMAIL (EmailJS) =================== */
+/* Config salva localmente e compartilhável por link (#cfg=...). Preencha pelo botão "Nuvem". */
+var K_CFG='ctrans_cloud_cfg_v1';
+var CLOUD=load(K_CFG,{url:'',anon:'',bucket:'anexos',table:'chamados',ejsPub:'',ejsService:'',ejsTemplate:''});
+(function(){try{var h=location.hash.match(/cfg=([^&]+)/);if(h){var c=JSON.parse(decodeURIComponent(escape(atob(h[1]))));CLOUD=Object.assign(CLOUD,c);save(K_CFG,CLOUD);}}catch(e){}})();
+var SB=null;
+function cloudOn(){return !!(CLOUD.url&&CLOUD.anon);}
+function emailAuto(){return !!(CLOUD.ejsPub&&CLOUD.ejsService&&CLOUD.ejsTemplate);}
+function initSB(){if(!cloudOn()||!window.supabase||!window.supabase.createClient){SB=null;return;}try{SB=window.supabase.createClient(CLOUD.url,CLOUD.anon);}catch(e){SB=null;}}
+initSB();
+function setCloudBadge(){var on=cloudOn();['m','c'].forEach(function(p){var d=document.getElementById(p+'-cloud-dot'),t=document.getElementById(p+'-cloud-txt');if(d)d.classList.toggle('on',on);if(t)t.textContent=on?'Nuvem: Supabase ativo':'Nuvem: local';});}
+function uuid(){return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&3|8);return v.toString(16);});}
+function dataURLtoBlob(d){var a=d.split(',');var mime=(a[0].match(/:(.*?);/)||[])[1]||'application/octet-stream';var bin=atob(a[1]);var n=bin.length;var u=new Uint8Array(n);while(n--)u[n]=bin.charCodeAt(n);return new Blob([u],{type:mime});}
+function uploadAtt(a){ /* a={name,type,data(dataURL)} -> retorna {name,type,data(url pública)} */
+  return new Promise(function(res){
+    if(!a){res(null);return;}
+    if(!SB){res(a);return;} /* sem nuvem: mantém base64 */
+    try{var blob=dataURLtoBlob(a.data);var ext=(a.name.split('.').pop()||'bin');var path=new Date().getFullYear()+'/'+uuid()+'.'+ext;
+      SB.storage.from(CLOUD.bucket).upload(path,blob,{contentType:a.type,upsert:true}).then(function(r){
+        if(r.error){res(a);return;}
+        var pub=SB.storage.from(CLOUD.bucket).getPublicUrl(path);
+        res({name:a.name,type:a.type,data:(pub.data&&pub.data.publicUrl)||a.data});
+      }).catch(function(){res(a);});
+    }catch(e){res(a);}
+  });
+}
+function cloudInsert(t){if(!SB)return;try{SB.from(CLOUD.table).insert([{id:t.id,data:t}]).then(function(){}).catch(function(){});}catch(e){}}
+function cloudUpdate(t){if(!SB)return;try{SB.from(CLOUD.table).update({data:t}).eq('id',t.id).then(function(){}).catch(function(){});}catch(e){}}
+function cloudLoadAll(cb){if(!SB){cb&&cb();return;}try{SB.from(CLOUD.table).select('data').order('created_at',{ascending:false}).then(function(r){
+  if(r&&r.data&&r.data.length){TICKETS=r.data.map(function(x){return x.data;});persistTickets();}cb&&cb();
+}).catch(function(){cb&&cb();});}catch(e){cb&&cb();}}
+function cloudSubscribe(){if(!SB)return;try{SB.channel('chamados_rt').on('postgres_changes',{event:'*',schema:'public',table:CLOUD.table},function(){cloudLoadAll(function(){try{mRender();}catch(e){}try{cRender();}catch(e){}});}).subscribe();}catch(e){}}
+cloudSubscribe();
+/* =================== GATE =================== */
+var gate=$('#gate'),choose=$('#choose'),pManut=$('#panel-manut'),pCtrans=$('#panel-ctrans');
+function openPanel(which){
+  choose.classList.add('hidden');
+  pManut.classList.toggle('on',which==='manut');
+  pCtrans.classList.toggle('on',which==='ctrans');
+  icons();
+}
+function backToChoose(){
+  pManut.classList.remove('on');pCtrans.classList.remove('on');
+  choose.classList.remove('hidden');
+  var lw=$('#logoWrap');if(lw)lw.classList.remove('revealed');
+}
+$('#logoWrap').addEventListener('click',function(){this.classList.add('revealed');});
+$('#ac-manut').addEventListener('click',function(){openPanel('manut');});
+$('#ac-ctrans').addEventListener('click',function(){openPanel('ctrans');});
+$$('[data-back]').forEach(function(b){b.addEventListener('click',backToChoose);});
+/* tabs login manut */
+$$('.ltabs button').forEach(function(b){b.addEventListener('click',function(){
+  $$('.ltabs button').forEach(function(x){x.classList.remove('active');});b.classList.add('active');
+  var t=b.getAttribute('data-mt');
+  $('#form-mlogin').classList.toggle('on',t==='login');
+  $('#form-mreg').classList.toggle('on',t==='reg');
+});});
+/* popular selects de cadastro/chamado */
+function refillSelects(){
+  fillSel('#mr-unidade',unidadeList(),'Selecione a unidade');
+  fillSel('#c-unidade',unidadeList(),'Selecione a unidade');
+  fillSel('#c-modelo',MODELOS,'Selecione marca/modelo');
+  fillSel('#c-motivo',MOTIVOS,'Selecione o motivo');
+  fillSel('#c-locadora',locadoraNomes(),'Selecione a locadora');
+}
+refillSelects();
+setCloudBadge();
+cloudLoadAll(function(){try{mRender();}catch(e){}try{cRender();}catch(e){}});
+/* ===== campos "Outros" (mostrar input e salvar valor digitado) ===== */
+function bindOther(selId,wrapId){var sel=$('#'+selId);if(!sel)return;sel.addEventListener('change',function(){var w=$('#'+wrapId);if(w)w.classList.toggle('on',sel.value==='Outros');});}
+bindOther('mr-unidade','mr-unidade-other');
+bindOther('c-unidade','c-unidade-other');
+bindOther('c-modelo','c-modelo-other');
+bindOther('c-locadora','c-locadora-other');
+bindOther('c-motivo','c-motivo-other');
+/* resolve valor final de um select considerando "Outros" + persiste quando preciso */
+function resolveField(selId,newId,kind){var sel=$('#'+selId),v=sel?sel.value:'';if(v==='Outros'){var nv=($('#'+newId)||{}).value;nv=(nv||'').trim();if(!nv)return '';if(kind==='uni')saveExtraUni(nv);return nv;}return v;}
+/* ===== adicionar locadora + e-mail ===== */
+$('#btn-add-loc').addEventListener('click',function(){var w=$('#add-loc-wrap');if(w)w.classList.toggle('on');icons();});
+$('#al-save').addEventListener('click',function(){
+  var nome=($('#al-nome').value||'').trim(),email=($('#al-email').value||'').trim();
+  if(!nome){alert('Informe o nome da locadora.');return;}
+  saveLocadora(nome,email);
+  refillSelects();
+  var ls=$('#c-locadora');if(ls){ls.value=nome;}
+  $('#al-nome').value='';$('#al-email').value='';
+  var w=$('#add-loc-wrap');if(w)w.classList.remove('on');
+  alert('Locadora "'+nome+'" salva e disponível na lista.');
+});
+/* ===== cadastro de usuário MANUTENÇÃO ===== */
+$('#form-mreg').addEventListener('submit',function(e){e.preventDefault();
+  var unidade=resolveField('mr-unidade','mr-unidade-new','uni');
+  var u={unidade:unidade,nome:$('#mr-nome').value.trim(),user:$('#mr-user').value.trim(),pass:$('#mr-pass').value,cod:($('#mr-cod').value||'').trim(),email:$('#mr-email').value.trim()};
+  if(!u.unidade){showMsg('#mr-msg','Selecione a unidade (ou digite em “Outros”).');return;}
+  if(!u.cod){showMsg('#mr-msg','Crie um código de acesso.');return;}
+  if(USERS.some(function(x){return x.user.toLowerCase()===u.user.toLowerCase();})){showMsg('#mr-msg','Já existe um usuário com esse login.');return;}
+  USERS.push(u);persistUsers();refillSelects();
+  showMsg('#mr-msg','Usuário criado com sucesso! Use a aba “Entrar” (login, senha e código).',true);
+  this.reset();var w=$('#mr-unidade-other');if(w)w.classList.remove('on');
+});
+/* ===== login MANUTENÇÃO ===== */
+$('#form-mlogin').addEventListener('submit',function(e){e.preventDefault();
+  var user=$('#ml-user').value.trim(),pass=$('#ml-pass').value,cod=($('#ml-cod').value||'').trim();
+  var u=USERS.find(function(x){return x.user.toLowerCase()===user.toLowerCase()&&x.pass===pass&&(x.cod||'')===cod;});
+  if(!u){showMsg('#ml-msg','Usuário, senha ou código inválidos. Crie um usuário se ainda não tiver.');return;}
+  CURRENT=u;openManut();
+});
+/* ===== login CTRANS (supervisores) ===== */
+$('#form-clogin').addEventListener('submit',function(e){e.preventDefault();
+  var user=$('#cl-user').value.trim(),pass=$('#cl-pass').value,cod=$('#cl-cod').value.trim();
+  var s=SUPERVISORES.find(function(x){return x.u.toLowerCase()===user.toLowerCase()&&x.p===pass&&x.c===cod;});
+  if(!s){showMsg('#cl-msg','Credenciais inválidas. Acesso restrito aos supervisores da CTRANS.');return;}
+  SUP=s;openCtrans();
+});
+/* ===== abrir apps ===== */
+function openManut(){
+  gate.style.display='none';
+  $('#app-ctrans').classList.remove('on');
+  $('#app-manut').classList.add('on');
+  $('#m-who').innerHTML='<i data-lucide="user"></i><span>'+esc(CURRENT.nome)+' · '+esc(CURRENT.unidade)+'</span>';
+  $('#c-email-note').querySelector('span').innerHTML='Ao abrir o chamado será gerada uma confirmação por e-mail para o <b>solicitante</b>, para a <b>CTRANS</b> e para a <b>locadora</b> selecionada (e-mail associado automaticamente).';
+  prefillChamado();mRender();icons();window.scrollTo(0,0);
+}
+function openCtrans(){
+  gate.style.display='none';
+  $('#app-manut').classList.remove('on');
+  $('#app-ctrans').classList.add('on');
+  $('#c-who').innerHTML='<i data-lucide="shield-check"></i><span>'+esc(SUP.u)+'</span>';
+  fillSel('#cd-f-uni',UNIDADES,'Todas as unidades');
+  fillSel('#cd-f-st',STATUS,'Todas as situações');
+  cRender();icons();window.scrollTo(0,0);
+}
+function reopenGate(){gate.style.display='flex';backToChoose();$$('.app').forEach(function(a){a.classList.remove('on');});window.scrollTo(0,0);}
+/* ===== logout (reautenticação) ===== */
+$('#m-logout').addEventListener('click',function(){CURRENT=null;$('#form-mlogin').reset();$('#ml-msg').style.display='none';reopenGate();});
+$('#c-logout').addEventListener('click',function(){SUP=null;$('#form-clogin').reset();$('#cl-msg').style.display='none';reopenGate();});
+/* ===== navegação de páginas ===== */
+$$('#app-manut .nav .tab').forEach(function(b){b.addEventListener('click',function(){
+  $$('#app-manut .nav .tab').forEach(function(x){x.classList.remove('active');});b.classList.add('active');
+  var p=b.getAttribute('data-mpage');
+  $('#mpage-abrir').classList.toggle('active',p==='abrir');
+  $('#mpage-gestao').classList.toggle('active',p==='gestao');
+  if(p==='gestao')mRender();icons();
+});});
+$$('#app-ctrans .nav .tab').forEach(function(b){b.addEventListener('click',function(){
+  $$('#app-ctrans .nav .tab').forEach(function(x){x.classList.remove('active');});b.classList.add('active');
+  var p=b.getAttribute('data-cpage');
+  $('#cpage-geral').classList.toggle('active',p==='geral');
+  $('#cpage-status').classList.toggle('active',p==='status');
+  $('#cpage-detalhe').classList.toggle('active',p==='detalhe');
+  if(p==='geral')cRenderCharts();else if(p==='status')cRenderStatus();else cRenderTable();icons();
+});});
+/* =================== ANEXOS (preview + base64) =================== */
+var ATT={}; /* id input -> {name,type,data} */
+function readFile(input){return new Promise(function(res){var f=input.files&&input.files[0];if(!f){res(null);return;}
+  var fr=new FileReader();fr.onload=function(){res({name:f.name,type:f.type,data:fr.result});};fr.onerror=function(){res(null);};fr.readAsDataURL(f);});}
+$$('#form-chamado input[type=file]').forEach(function(inp){
+  inp.addEventListener('change',function(){
+    var prev=$('#'+inp.getAttribute('data-prev'));
+    readFile(inp).then(function(obj){
+      ATT[inp.id]=obj;
+      if(!obj){prev.classList.remove('on');prev.innerHTML='';return;}
+      var media='';
+      if(/^image\//.test(obj.type))media='<img src="'+obj.data+'">';
+      else if(/^video\//.test(obj.type))media='<video src="'+obj.data+'" controls></video>';
+      prev.innerHTML=media+'<div class="fn"><i data-lucide="check-circle-2"></i> '+esc(obj.name)+'</div>';
+      prev.classList.add('on');icons();
+    });
+  });
+});
+function prefillChamado(){
+  if(!CURRENT)return;
+  var us=$('#c-unidade');if(us&&UNIDADES.indexOf(CURRENT.unidade)>=0)us.value=CURRENT.unidade;
+  $('#c-solic').value=CURRENT.nome||'';
+  $('#c-email').value=CURRENT.email||'';
+}
+/* =================== EMAIL (confirmação) =================== */
+function saud(){var h=new Date().getHours();return h<12?'Bom dia':(h<18?'Boa tarde':'Boa noite');}
+function buildEmail(t){
+  var dest=[t.email,EMAIL_CTRANS,LOCADORAS[t.locadora]||''].filter(Boolean);
+  var subject='Confirmação de abertura de chamado — '+t.id+' — '+t.placa;
+  var body=[saud()+',','',
+    'Confirmamos a ABERTURA do chamado de manutenção abaixo. A solicitação foi direcionada à locadora responsável e à equipe da CTRANS.','',
+    'Número do chamado: '+t.id,
+    'Data e hora de abertura: '+fmtDate(t.criado),
+    'Unidade: '+t.unidade,
+    'Placa do veículo: '+t.placa,
+    'Marca/Modelo: '+t.modelo,
+    'Quilometragem: '+t.km,
+    'Locadora: '+t.locadora,
+    'Responsável pela solicitação: '+t.solic,
+    'Motivo da solicitação: '+t.motivo,
+    'Situação atual: '+t.status,'',
+    'Descrição do ocorrido:',(t.desc||'—'),'',
+    'Você pode acompanhar o andamento e a situação deste chamado diretamente no painel do sistema de chamados.','',
+    'Agradecemos o seu contato e permanecemos à disposição.','',
+    'Atenciosamente,','CTRANS — Secretaria Estadual de Saúde de Pernambuco'].join('\n');
+  return {dest:dest,subject:subject,body:body};
+}
+function sendEmail(t){var m=buildEmail(t);
+  if(emailAuto()&&window.emailjs){
+    try{
+      emailjs.init(CLOUD.ejsPub);
+      emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,{
+        to_email:m.dest.join(','),subject:m.subject,message:m.body,
+        chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic
+      }).then(function(){},function(){mailtoFallback(m);});
+      return;
+    }catch(e){}
+  }
+  mailtoFallback(m);
+}
+function mailtoFallback(m){var href='mailto:'+encodeURIComponent(m.dest.join(','))+'?subject='+encodeURIComponent(m.subject)+'&body='+encodeURIComponent(m.body);try{window.location.href=href;}catch(e){}}
+/* =================== ABRIR CHAMADO =================== */
+$('#form-chamado').addEventListener('submit',function(e){e.preventDefault();
+  var reqFiles=[['f-placa','Foto da Placa'],['f-km','Foto da Quilometragem no Painel']];
+  for(var i=0;i<reqFiles.length;i++){if(!ATT[reqFiles[i][0]]){showMsg('#c-msg','Anexe o arquivo obrigatório: '+reqFiles[i][1]+'.');return;}}
+  var modelo=resolveField('c-modelo','c-modelo-new');
+  var unidade=resolveField('c-unidade','c-unidade-new','uni');
+  var locadora=resolveField('c-locadora','c-locadora-new');
+  var motivo=resolveField('c-motivo','c-motivo-new');
+  if(!unidade||!modelo||!locadora||!motivo){showMsg('#c-msg','Preencha todos os campos obrigatórios (inclusive os campos “Outros” quando selecionados).');return;}
+  var t={id:genId(),criado:nowISO(),
+    placa:$('#c-placa').value.trim().toUpperCase(),modelo:modelo,unidade:unidade,
+    locadora:locadora,solic:$('#c-solic').value.trim(),email:$('#c-email').value.trim(),
+    km:$('#c-km').value.trim(),motivo:motivo,desc:$('#c-desc').value.trim(),
+    status:'Aberto',atualizado:'',atualizadoPor:'',obsCtrans:'',
+    anexos:{placa:ATT['f-placa']||null,evid:ATT['f-evid']||null,km:ATT['f-km']||null,bo:ATT['f-bo']||null,fa:ATT['f-fa']||null},
+    userLogin:CURRENT?CURRENT.user:''};
+  refillSelects();
+  var m=buildEmail(t);
+  $('#c-msg').className='msg ok';$('#c-msg').style.display='block';
+  $('#c-msg').innerHTML='Processando chamado <b>'+t.id+'</b>…';
+  /* envia anexos à nuvem (quando configurada), salva e dispara e-mail */
+  var keys=Object.keys(t.anexos);
+  Promise.all(keys.map(function(k){return uploadAtt(t.anexos[k]);})).then(function(ups){
+    keys.forEach(function(k,ix){t.anexos[k]=ups[ix];});
+    TICKETS.unshift(t);persistTickets();cloudInsert(t);
+    $('#c-msg').innerHTML='Chamado <b>'+t.id+'</b> aberto com sucesso! Confirmação '+(emailAuto()?'enviada automaticamente':'direcionada')+' para: '+esc(m.dest.join(', '))+'.'+
+      (emailAuto()?'':' <a href="#" id="c-sendmail" style="color:var(--accent);font-weight:700">Enviar e-mail de confirmação agora</a>.');
+    var sb=$('#c-sendmail');if(sb)sb.addEventListener('click',function(ev){ev.preventDefault();sendEmail(t);});
+    sendEmail(t);
+    mRender();
+  });
+  this.reset();ATT={};$$('#form-chamado .prev').forEach(function(p){p.classList.remove('on');p.innerHTML='';});
+  $$('#form-chamado .otherwrap').forEach(function(w){w.classList.remove('on');});
+  prefillChamado();window.scrollTo(0,0);icons();
+});
+$('#form-chamado').addEventListener('reset',function(){ATT={};$$('#form-chamado .prev').forEach(function(p){p.classList.remove('on');p.innerHTML='';});setTimeout(prefillChamado,0);});
+/* =================== CHART HELPERS =================== */
+var CH={};
+function chart(id){var el=document.getElementById(id);if(!el)return null;if(CH[id])return CH[id];CH[id]=echarts.init(el);return CH[id];}
+window.addEventListener('resize',function(){Object.keys(CH).forEach(function(k){try{CH[k].resize();}catch(e){}});});
+var PAL=['#6E8BA0','#C08A5E','#5C8A6B','#3E6E68','#9C8BA6','#B0564A','#89986F','#C9A15E'];
+function baseGrid(){return {left:'3%',right:'4%',bottom:'3%',top:28,containLabel:true};}
+function countBy(arr,fn){var m={};arr.forEach(function(x){var k=fn(x)||'—';m[k]=(m[k]||0)+1;});return m;}
+function toPairs(obj){return Object.keys(obj).map(function(k){return [k,obj[k]];}).sort(function(a,b){return b[1]-a[1];});}
+function donut(id,obj,colorMap){var c=chart(id);if(!c)return;var data=Object.keys(obj).map(function(k,i){return {name:k,value:obj[k],itemStyle:{color:(colorMap&&colorMap[k])||PAL[i%PAL.length]}};});
+  c.setOption({tooltip:{trigger:'item',formatter:'{b}: {c} ({d}%)'},legend:{bottom:0,textStyle:{color:'#8A8178',fontSize:11}},
+    series:[{type:'pie',radius:['45%','70%'],center:['50%','44%'],avoidLabelOverlap:true,label:{formatter:'{b}\n{c}',fontSize:11,color:'#2B2724'},data:data.length?data:[{name:'Sem dados',value:0}]}]});}
+function barsH(id,pairs,color){var c=chart(id);if(!c)return;pairs=pairs.slice(0,10).reverse();
+  c.setOption({grid:baseGrid(),tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},xAxis:{type:'value',axisLabel:{color:'#8A8178'}},
+    yAxis:{type:'category',data:pairs.map(function(p){return p[0];}),axisLabel:{color:'#2B2724',fontSize:11}},
+    series:[{type:'bar',data:pairs.map(function(p){return p[1];}),itemStyle:{color:color||'#3E6E68',borderRadius:[0,6,6,0]},label:{show:true,position:'right',color:'#6b635a',fontSize:11}}]});}
+var STCOLOR={'Aberto':'#6E8BA0','Em Andamento':'#C08A5E','Resolvido':'#5C8A6B','Com Feedback':'#3E6E68'};
+/* =================== MODAL MEDIA =================== */
+function openModal(html){$('#modal-body').innerHTML=html;$('#modal').classList.add('on');icons();}
+$('#modal-close').addEventListener('click',function(){$('#modal').classList.remove('on');});
+$('#modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('on');});
+function mediaHtml(a){if(!a)return '<span style="color:#8A8178">—</span>';
+  if(/^image\//.test(a.type))return '<img src="'+a.data+'" class="thumb" data-full="'+a.data+'" data-kind="img">';
+  if(/^video\//.test(a.type))return '<video src="'+a.data+'" class="thumb" data-full="'+a.data+'" data-kind="vid"></video>';
+  return '<a href="'+a.data+'" download="'+esc(a.name)+'" style="color:var(--accent)">arquivo</a>';}
+function bindThumbs(root){$$('.thumb',root).forEach(function(el){el.addEventListener('click',function(){
+  var full=el.getAttribute('data-full'),kind=el.getAttribute('data-kind');
+  openModal(kind==='vid'?'<video src="'+full+'" controls autoplay style="width:100%"></video>':'<img src="'+full+'">');
+});});}
+function anexosCell(t){var a=t.anexos||{};var parts=[];['placa','evid','km','bo','fa'].forEach(function(k){if(a[k])parts.push(mediaHtml(a[k]));});
+  return parts.length?('<div style="display:flex;gap:5px;flex-wrap:wrap">'+parts.join('')+'</div>'):'<span style="color:#8A8178">sem anexos</span>';}
+/* =================== RENDER MANUTENÇÃO (página 2) =================== */
+function kpiCard(cls,icon,lab,val,sub){return '<div class="kpi '+cls+'"><div class="lab"><i data-lucide="'+icon+'"></i> '+lab+'</div><div class="val">'+val+'</div><div class="sub">'+sub+'</div></div>';}
+function mData(){if(!CURRENT)return [];return TICKETS.filter(function(t){return t.unidade===CURRENT.unidade||t.userLogin===CURRENT.user;});}
+function mRender(){
+  var data=mData();
+  var ab=data.filter(function(t){return t.status==='Aberto';}).length;
+  var pr=data.filter(function(t){return t.status==='Em Andamento';}).length;
+  var rs=data.filter(function(t){return t.status==='Resolvido';}).length;
+  var fb=data.filter(function(t){return t.status==='Com Feedback';}).length;
+  $('#m-kpis').innerHTML=
+    kpiCard('k-open','folder-open','Chamados abertos',ab,'Aguardando análise')+
+    kpiCard('k-prog','loader','Em andamento',pr,'Em atendimento')+
+    kpiCard('k-done','check-circle-2','Resolvidos',rs,'Concluídos')+
+    kpiCard('k-fb','message-circle','Com feedback',fb,'Retorno registrado')+
+    kpiCard('','hash','Total da unidade',data.length,esc(CURRENT?CURRENT.unidade:''));
+  donut('m-ch-status',countBy(data,function(t){return t.status;}),STCOLOR);
+  barsH('m-ch-motivo',toPairs(countBy(data,function(t){return t.motivo;})),'#C08A5E');
+  var rk=toPairs(countBy(data,function(t){return t.placa;})).slice(0,12);
+  $('#m-rank').innerHTML=rk.length?rk.map(function(p,i){return '<li><span class="pos">'+(i+1)+'</span><span class="nm">'+esc(p[0])+'</span><span class="ct">'+p[1]+' chamado(s)</span></li>';}).join(''):'<li><span class="nm" style="color:#8A8178">Nenhum chamado ainda.</span></li>';
+  var th='<thead><tr><th>Chamado</th><th>Abertura</th><th>Placa</th><th>Modelo</th><th>Motivo</th><th>Situação</th><th>Atualizado em</th><th>Anexos</th></tr></thead>';
+  var tb='<tbody>'+(data.length?data.map(function(t){return '<tr><td>'+esc(t.id)+'</td><td>'+fmtDate(t.criado)+'</td><td>'+esc(t.placa)+'</td><td>'+esc(t.modelo)+'</td><td>'+esc(t.motivo)+'</td><td><span class="badge '+STBADGE[t.status]+'">'+esc(t.status)+'</span></td><td>'+(t.atualizado?fmtDate(t.atualizado):'—')+'</td><td>'+anexosCell(t)+'</td></tr>';}).join(''):'<tr><td colspan="8" style="text-align:center;color:#8A8178">Nenhum chamado registrado.</td></tr>')+'</tbody>';
+  $('#m-tbl').innerHTML=th+tb;bindThumbs($('#m-tbl'));icons();
+}
+/* =================== RENDER CTRANS =================== */
+function cRender(){cRenderCharts();cRenderStatus();cRenderTable();}
+function ageLabel(iso){var d=new Date(iso);if(isNaN(d))return {t:'—',c:''};var h=Math.floor((Date.now()-d.getTime())/36e5);var cls=h>=72?'crit':(h>=24?'warn':'');var txt=h<1?'há menos de 1h':(h<24?('há '+h+'h'):('há '+Math.floor(h/24)+'d'));return {t:txt,c:cls};}
+function cRenderStatus(){
+  var data=TICKETS;
+  var ab=data.filter(function(t){return t.status==='Aberto';});
+  var pr=data.filter(function(t){return t.status==='Em Andamento';});
+  var rs=data.filter(function(t){return t.status==='Resolvido';});
+  var fb=data.filter(function(t){return t.status==='Com Feedback';});
+  var el=document.getElementById('live-kpis');
+  if(el)el.innerHTML=
+    kpiCard('','hash','Chamados ativos',ab.length+pr.length,'Aberto + Em andamento')+
+    kpiCard('','folder-open','Aguardando',ab.length,'Ainda não iniciados')+
+    kpiCard('','loader','Em atendimento',pr.length,'Sendo tratados')+
+    kpiCard('','check-circle-2','Concluídos',rs.length+fb.length,'Resolvido + feedback');
+  var cols=[['Aberto','c-open',ab],['Em Andamento','c-prog',pr],['Resolvido','c-done',rs],['Com Feedback','c-fb',fb]];
+  var board=document.getElementById('live-board');if(!board)return;
+  board.innerHTML=cols.map(function(col){
+    var nome=col[0],cls=col[1],arr=col[2].slice().sort(function(a,b){return new Date(b.criado)-new Date(a.criado);});
+    var cards=arr.length?arr.map(function(t){var a=ageLabel(t.criado);
+      return '<div class="stcard"><div class="cid">'+esc(t.id)+' · <span class="cpl">'+esc(t.placa)+'</span></div>'+
+        '<div class="cmeta">'+esc(t.unidade)+'<br>'+esc(t.locadora)+' · '+esc(t.motivo)+'<br>Solicitante: '+esc(t.solic)+'</div>'+
+        '<span class="cage '+a.c+'">aberto '+a.t+'</span></div>';
+    }).join(''):'<div class="empty">Nenhum chamado nesta situação.</div>';
+    return '<div class="stcol '+cls+'"><div class="sth"><span class="nm">'+nome+'</span><span class="qt">'+col[2].length+'</span></div>'+cards+'</div>';
+  }).join('');
+  var up=document.getElementById('live-upd');if(up)up.textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  var sr=document.getElementById('live-src');if(sr)sr.textContent=cloudOn()?'Fonte: Supabase (tempo real)':'Fonte: local';
+}
+function inRange(iso,ini,fim){var d=new Date(iso);if(ini&&d<new Date(ini))return false;if(fim){var f=new Date(fim);f.setHours(23,59,59);if(d>f)return false;}return true;}
+function cRenderCharts(){
+  var data=TICKETS;
+  var ab=data.filter(function(t){return t.status==='Aberto';}).length;
+  var pr=data.filter(function(t){return t.status==='Em Andamento';}).length;
+  var rs=data.filter(function(t){return t.status==='Resolvido';}).length;
+  var fb=data.filter(function(t){return t.status==='Com Feedback';}).length;
+  $('#c-kpis').innerHTML=
+    kpiCard('','hash','Total de chamados',data.length,'Todas as unidades')+
+    kpiCard('k-open','folder-open','Abertos',ab,'Aguardando')+
+    kpiCard('k-prog','loader','Em andamento',pr,'Em atendimento')+
+    kpiCard('k-done','check-circle-2','Resolvidos',rs,'Concluídos')+
+    kpiCard('k-fb','message-circle','Com feedback',fb,'Retorno dado');
+  donut('c-ch-status',countBy(data,function(t){return t.status;}),STCOLOR);
+  barsH('c-ch-motivo',toPairs(countBy(data,function(t){return t.motivo;})),'#C08A5E');
+  barsH('c-ch-unidade',toPairs(countBy(data,function(t){return t.unidade;})),'#3E6E68');
+  var uni=toPairs(countBy(data,function(t){return t.unidade;}));
+  $('#c-rank-uni').innerHTML=uni.length?uni.slice(0,12).map(function(p,i){return '<li><span class="pos">'+(i+1)+'</span><span class="nm">'+esc(p[0])+'</span><span class="ct">'+p[1]+' chamado(s)</span></li>';}).join(''):'<li><span class="nm" style="color:#8A8178">Sem dados.</span></li>';
+  var veic=toPairs(countBy(data,function(t){return t.placa+' · '+t.modelo;}));
+  $('#c-rank-veic').innerHTML=veic.length?veic.slice(0,12).map(function(p,i){return '<li><span class="pos">'+(i+1)+'</span><span class="nm">'+esc(p[0])+'</span><span class="ct">'+p[1]+' chamado(s)</span></li>';}).join(''):'<li><span class="nm" style="color:#8A8178">Sem dados.</span></li>';
+  cCompare();
+}
+function cCompare(){
+  var ai=$('#cp-a-ini').value,af=$('#cp-a-fim').value,bi=$('#cp-b-ini').value,bf=$('#cp-b-fim').value;
+  var aLab=(ai||bf)?'Período A':'Este mês',bLab=(bi||bf)?'Período B':'Mês anterior';
+  var A,B;
+  if(ai||af||bi||bf){A=TICKETS.filter(function(t){return inRange(t.criado,ai,af);});B=TICKETS.filter(function(t){return inRange(t.criado,bi,bf);});}
+  else{var now=new Date();var m0=new Date(now.getFullYear(),now.getMonth(),1);var mPrev=new Date(now.getFullYear(),now.getMonth()-1,1);
+    A=TICKETS.filter(function(t){return new Date(t.criado)>=m0;});B=TICKETS.filter(function(t){return new Date(t.criado)>=mPrev&&new Date(t.criado)<m0;});}
+  var cats=STATUS;var c=chart('c-ch-cmp');if(!c)return;
+  c.setOption({grid:baseGrid(),tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},legend:{bottom:0,textStyle:{color:'#8A8178'}},
+    xAxis:{type:'category',data:cats,axisLabel:{color:'#2B2724',fontSize:10}},yAxis:{type:'value',axisLabel:{color:'#8A8178'}},
+    series:[{name:aLab,type:'bar',data:cats.map(function(s){return A.filter(function(t){return t.status===s;}).length;}),itemStyle:{color:'#3E6E68',borderRadius:[4,4,0,0]}},
+            {name:bLab,type:'bar',data:cats.map(function(s){return B.filter(function(t){return t.status===s;}).length;}),itemStyle:{color:'#C08A5E',borderRadius:[4,4,0,0]}}]});
+}
+$('#cp-cmp').addEventListener('click',cCompare);
+/* =================== DETALHAMENTO CTRANS =================== */
+function cFiltered(){
+  var q=($('#cd-busca').value||'').trim().toUpperCase();
+  var uni=$('#cd-f-uni').value,st=$('#cd-f-st').value;
+  return TICKETS.filter(function(t){
+    if(q&&t.placa.toUpperCase().indexOf(q)<0)return false;
+    if(uni&&t.unidade!==uni)return false;
+    if(st&&t.status!==st)return false;
+    return true;
+  });
+}
+function cRenderTable(){
+  var data=cFiltered();
+  var th='<thead><tr><th>Chamado</th><th>Abertura</th><th>Placa</th><th>Marca/Modelo</th><th>Unidade</th><th>Locadora</th><th>Solicitante</th><th>KM</th><th>Motivo</th><th>Anexos</th><th>Situação</th><th>Atualização</th></tr></thead>';
+  var rows=data.length?data.map(function(t){
+    var sel='<select data-id="'+t.id+'" class="st-sel" style="font-size:12px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;background:var(--bg)">'+STATUS.map(function(s){return '<option'+(s===t.status?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
+    return '<tr><td>'+esc(t.id)+'</td><td>'+fmtDate(t.criado)+'</td><td><b>'+esc(t.placa)+'</b></td><td>'+esc(t.modelo)+'</td><td>'+esc(t.unidade)+'</td><td>'+esc(t.locadora)+'</td><td>'+esc(t.solic)+'</td><td>'+esc(t.km)+'</td><td>'+esc(t.motivo)+'</td><td>'+anexosCell(t)+'</td><td>'+sel+'</td><td>'+(t.atualizado?('<div>'+fmtDate(t.atualizado)+'</div><div style="font-size:10px;color:#8A8178">'+esc(t.atualizadoPor||'')+'</div>'):'<span style="color:#8A8178">—</span>')+'</td></tr>';
+  }).join(''):'<tr><td colspan="12" style="text-align:center;color:#8A8178">Nenhum chamado encontrado.</td></tr>';
+  $('#c-tbl').innerHTML=th+'<tbody>'+rows+'</tbody>';
+  bindThumbs($('#c-tbl'));
+  $$('.st-sel',$('#c-tbl')).forEach(function(sel){sel.addEventListener('change',function(){
+    var id=sel.getAttribute('data-id');var t=TICKETS.find(function(x){return x.id===id;});if(!t)return;
+    t.status=sel.value;t.atualizado=nowISO();t.atualizadoPor=SUP?SUP.u:'CTRANS';
+    persistTickets();cloudUpdate(t);cRenderTable();
+  });});
+  icons();
+}
+$('#cd-busca').addEventListener('input',cRenderTable);
+$('#cd-f-uni').addEventListener('change',cRenderTable);
+$('#cd-f-st').addEventListener('change',cRenderTable);
+$('#cd-csv').addEventListener('click',function(){
+  var cols=['Chamado','Abertura','Placa','Marca/Modelo','Unidade','Locadora','Solicitante','Email','KM','Motivo','Situacao','Atualizado em','Atualizado por','Descricao'];
+  var lines=[cols.join(';')];
+  cFiltered().forEach(function(t){lines.push([t.id,fmtDate(t.criado),t.placa,t.modelo,t.unidade,t.locadora,t.solic,t.email,t.km,t.motivo,t.status,t.atualizado?fmtDate(t.atualizado):'',t.atualizadoPor||'',(t.desc||'').replace(/[;\n]/g,' ')].map(function(v){return '"'+String(v==null?'':v).replace(/\"/g,'\"\"')+'"';}).join(';'));});
+  var blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='chamados_ctrans.csv';a.click();
+});
+/* =================== CONFIG DE NUVEM (modal) =================== */
+function cloudModal(){
+  var c=CLOUD;
+  var html='<h3 style="margin:0 0 6px">Configurar nuvem e e-mail automático</h3>'+
+    '<p style="color:var(--muted);font-size:13px;margin:0 0 14px">Cole aqui suas credenciais do <b>Supabase</b> (anexos e dados compartilhados em tempo real) e do <b>EmailJS</b> (envio automático de confirmação). Sem preencher, o sistema funciona localmente e o e-mail abre pelo app de e-mail. As chaves ficam salvas apenas neste navegador.</p>'+
+    '<div class="cfggrid">'+
+    fld('cf-url','Supabase URL',c.url,'https://xxxx.supabase.co')+
+    fld('cf-anon','Supabase anon key',c.anon,'eyJhbGciOi...')+
+    fld('cf-bucket','Bucket de anexos',c.bucket,'anexos')+
+    fld('cf-table','Tabela de chamados',c.table,'chamados')+
+    fld('cf-ejspub','EmailJS Public Key',c.ejsPub,'xxxxxxxx')+
+    fld('cf-ejssvc','EmailJS Service ID',c.ejsService,'service_xxxx')+
+    fld('cf-ejstpl','EmailJS Template ID',c.ejsTemplate,'template_xxxx')+
+    '</div>'+
+    '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">'+
+    '<button class="btn" id="cf-save"><i data-lucide="save"></i> Salvar e conectar</button>'+
+    '<button class="btn ghost" id="cf-link"><i data-lucide="link"></i> Gerar link compartilhável</button>'+
+    '</div><div id="cf-out" style="margin-top:12px;font-size:12px;color:var(--muted);word-break:break-all"></div>';
+  openModal(html);
+  $('#cf-save').addEventListener('click',function(){
+    CLOUD={url:$('#cf-url').value.trim(),anon:$('#cf-anon').value.trim(),bucket:($('#cf-bucket').value.trim()||'anexos'),table:($('#cf-table').value.trim()||'chamados'),ejsPub:$('#cf-ejspub').value.trim(),ejsService:$('#cf-ejssvc').value.trim(),ejsTemplate:$('#cf-ejstpl').value.trim()};
+    save(K_CFG,CLOUD);initSB();setCloudBadge();cloudSubscribe();
+    cloudLoadAll(function(){try{mRender();}catch(e){}try{cRender();}catch(e){}});
+    $('#cf-out').innerHTML=cloudOn()?'<span style="color:var(--ok,#5C8A6B)">Conectado à nuvem Supabase.</span>':'Configuração salva (modo local).';
+  });
+  $('#cf-link').addEventListener('click',function(){
+    try{var cfg=btoa(unescape(encodeURIComponent(JSON.stringify(CLOUD))));var url=location.href.split('#')[0]+'#cfg='+cfg;$('#cf-out').innerHTML='Link com as credenciais embutidas (compartilhe com cuidado):<br>'+esc(url);}catch(e){}
+  });
+}
+function fld(id,lab,val,ph){return '<div class="fg"><label>'+esc(lab)+'</label><input type="text" id="'+id+'" value="'+esc(val||'')+'" placeholder="'+esc(ph||'')+'"></div>';}
+var ccb=$('#c-cloud-btn');if(ccb)ccb.addEventListener('click',cloudModal);
+/* =================== RELATÓRIO EXECUTIVO MENSAL (PDF) =================== */
+function monthTickets(){var now=new Date();var y=now.getFullYear(),mo=now.getMonth();return TICKETS.filter(function(t){var d=new Date(t.criado);return !isNaN(d)&&d.getFullYear()===y&&d.getMonth()===mo;});}
+function gerarPDF(){
+  var JS=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
+  if(!JS){alert('Biblioteca de PDF não carregada. Verifique a conexão com a internet.');return;}
+  var doc=new JS({orientation:'landscape',unit:'pt',format:'a4'});
+  var now=new Date();
+  var meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var ref=meses[now.getMonth()]+' de '+now.getFullYear();
+  var all=TICKETS.slice(), mes=monthTickets();
+  doc.setFontSize(16);doc.setTextColor(60,50,40);doc.text('Relatório Executivo Mensal — Chamados de Manutenção',40,40);
+  doc.setFontSize(11);doc.setTextColor(110,100,90);
+  doc.text('CTRANS — Secretaria Estadual de Saúde de Pernambuco',40,58);
+  doc.text('Mês de referência: '+ref+'   ·   Gerado em '+fmtDate(now.toISOString()),40,74);
+  function cont(arr,key){var o={};arr.forEach(function(t){var k=t[key]||'—';o[k]=(o[k]||0)+1;});return o;}
+  var st=cont(mes,'status');
+  doc.setFontSize(12);doc.setTextColor(60,50,40);doc.text('Resumo do mês',40,100);
+  doc.autoTable({startY:108,theme:'grid',styles:{fontSize:10},headStyles:{fillColor:[110,139,160]},
+    head:[['Indicador','Valor']],
+    body:[['Chamados abertos no mês',String(mes.length)],
+      ['Aberto',String(st['Aberto']||0)],['Em Andamento',String(st['Em Andamento']||0)],
+      ['Resolvido',String(st['Resolvido']||0)],['Com Feedback',String(st['Com Feedback']||0)],
+      ['Total acumulado (base)',String(all.length)]]});
+  function tabDe(obj,titulo,y){doc.setFontSize(12);doc.setTextColor(60,50,40);doc.text(titulo,40,y);
+    var body=Object.keys(obj).sort(function(a,b){return obj[b]-obj[a];}).map(function(k){return [k,String(obj[k])];});
+    doc.autoTable({startY:y+8,theme:'striped',styles:{fontSize:9},headStyles:{fillColor:[92,138,107]},head:[['Item','Chamados']],body:body.length?body:[['—','0']]});
+    return doc.lastAutoTable.finalY;}
+  var y1=doc.lastAutoTable.finalY+22;
+  var yA=tabDe(cont(mes,'unidade'),'Chamados por unidade',y1);
+  var yB=tabDe(cont(mes,'locadora'),'Chamados por locadora',yA+22);
+  tabDe(cont(mes,'motivo'),'Chamados por motivo',yB+22);
+  doc.addPage('a4','landscape');
+  doc.setFontSize(12);doc.setTextColor(60,50,40);doc.text('Detalhamento dos chamados do mês',40,40);
+  doc.autoTable({startY:52,theme:'grid',styles:{fontSize:8,cellPadding:3},headStyles:{fillColor:[110,139,160]},
+    head:[['Chamado','Abertura','Placa','Unidade','Locadora','Motivo','Situação']],
+    body:(mes.length?mes:[]).map(function(t){return [t.id,fmtDate(t.criado),t.placa,t.unidade,t.locadora,t.motivo,t.status];}),
+    columnStyles:{0:{cellWidth:95}}});
+  if(!mes.length){doc.setFontSize(10);doc.setTextColor(120);doc.text('Nenhum chamado registrado no mês de referência.',40,70);}
+  doc.save('Relatorio_Executivo_Chamados_'+now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'.pdf');
+}
+var mp=$('#m-pdf');if(mp)mp.addEventListener('click',gerarPDF);
+var cp=$('#c-pdf');if(cp)cp.addEventListener('click',gerarPDF);
+/* ===== atualização ao vivo do mural de status ===== */
+var lr=$('#live-refresh');if(lr)lr.addEventListener('click',function(){cloudLoadAll(function(){cRenderStatus();icons();});});
+setInterval(function(){var pg=document.getElementById('cpage-status');if(pg&&pg.classList.contains('active'))cRenderStatus();},15000);
+/* =================== INIT =================== */
+icons();
+</script>
+</body>
+</html>
