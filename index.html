@@ -198,9 +198,59 @@ table.tbl tbody tr:hover{background:var(--bg)}
 .pill{font-size:11px;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:var(--bg);cursor:pointer;color:var(--ink);display:inline-flex;align-items:center;gap:6px}
 .pill svg{width:14px;height:14px}
 @media(max-width:820px){.inlineform,.cfggrid{grid-template-columns:1fr}}
+/* ===== BOTÃO LATERAL DE TEMA ===== */
+.theme-toggle{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:9998;background:var(--panel);border:1px solid var(--line);border-right:none;border-radius:13px 0 0 13px;padding:13px 9px;cursor:pointer;color:var(--accent);box-shadow:-5px 0 18px rgba(43,39,36,.16);display:flex;flex-direction:column;align-items:center;gap:6px;font-family:inherit;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;transition:background .15s,color .15s}
+.theme-toggle svg{width:20px;height:20px}
+.theme-toggle span{line-height:1}
+.theme-toggle:hover{background:var(--accent);color:#fff}
+/* ===== GRÁFICOS AMPLIÁVEIS ===== */
+.chart-card{position:relative;cursor:zoom-in}
+.chart-card .zoom-hint{position:absolute;top:14px;right:14px;color:var(--muted);opacity:.55;pointer-events:none;transition:opacity .15s,color .15s}
+.chart-card .zoom-hint svg{width:17px;height:17px}
+.chart-card:hover .zoom-hint{opacity:1;color:var(--accent)}
+.modal-chart{width:100%;height:min(68vh,520px)}
+[data-tp][data-v]{cursor:zoom-in}
+/* ===== TEMA ESCURO ===== */
+body[data-theme="dark"]{--bg:#17140F;--panel:#211D18;--ink:#F1EBE1;--muted:#A99F92;--line:#342F28;--accent:#6FA89F;--accent-soft:#223431;--warn:#D7A571;--ok:#7BB089;--bad:#D98A7C;--info:#8FACC1;background-image:radial-gradient(circle at 12% 8%,rgba(111,168,159,.08),transparent 42%),radial-gradient(circle at 88% 4%,rgba(215,165,113,.07),transparent 40%);}
+body[data-theme="dark"] #gate{background-image:radial-gradient(circle at 12% 8%,rgba(111,168,159,.1),transparent 42%),radial-gradient(circle at 88% 4%,rgba(215,165,113,.08),transparent 40%);}
+body[data-theme="dark"] .who{color:#bfe3da;background:#1f2e2b;border-color:#2f4440}
+body[data-theme="dark"] .who.sup{color:#e9c3a9;background:#2e241d;border-color:#4a3a2c}
+body[data-theme="dark"] .msg.err{background:#3a241c;color:#f0b49a;border-color:#4e3326}
+body[data-theme="dark"] .msg.ok{background:#1f2e2b;color:#9fd3c6;border-color:#2f4440}
+body[data-theme="dark"] .badge.b-open{color:#9fc0d6;background:#1e2a33;border-color:#324455}
+body[data-theme="dark"] .badge.b-prog{color:#e9c3a9;background:#2e241d;border-color:#4a3a2c}
+body[data-theme="dark"] .badge.b-done{color:#9fd3b4;background:#1f2e26;border-color:#2f4438}
+body[data-theme="dark"] .badge.b-fb{color:#8fcabf;background:#223431;border-color:#2f4440}
+body[data-theme="dark"] .notice{color:#9fd3c6;background:#1f2e2b;border-color:#2f4440}
+body[data-theme="dark"] .notice.warn{color:#e9c3a9;background:#2e241d;border-color:#4a3a2c}
+body[data-theme="dark"] .stcard .cage{background:#2a2620;color:#b6ab9d}
+body[data-theme="dark"] .stcard .cage.warn{background:#3a2e1c;color:#e2b877}
+body[data-theme="dark"] .stcard .cage.crit{background:#3a2420;color:#e59b8d}
+body[data-theme="dark"] .modal{background:rgba(0,0,0,.66)}
+body[data-theme="dark"] .filebox input[type=file]{color:var(--muted)}
+/* ===== MOBILE ===== */
+@media(max-width:640px){
+  .wrap{padding:0 14px 56px}.app.on{padding:0 14px 56px}
+  .topbar{flex-direction:column;align-items:stretch;gap:10px}
+  .topbar>div{justify-content:space-between;flex-wrap:wrap}
+  .nav{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  .nav .tab{white-space:nowrap;padding:11px 12px}
+  .kpis{grid-template-columns:1fr 1fr;gap:10px}
+  .kpi{padding:13px}.kpi .val{font-size:21px}
+  .toolbar{flex-direction:column;align-items:stretch}
+  .toolbar .fg{min-width:0;width:100%}
+  .chart{height:262px}
+  .hero h1{font-size:21px}
+  .sec{font-size:17px}
+  .modal{padding:10px}.modal .mbox{padding:16px;max-height:93vh}
+  .theme-toggle{padding:9px 6px;font-size:8px}.theme-toggle svg{width:17px;height:17px}
+  .submitbar .btn{width:100%}
+}
+@media(max-width:400px){.kpis{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
+<button class="theme-toggle" id="themeToggle" type="button" title="Alternar tema claro/escuro"><i data-lucide="moon"></i><span>Escuro</span></button>
 <!-- ===================== LOGIN GATE ===================== -->
 <div id="gate">
   <div class="card">
@@ -301,6 +351,7 @@ table.tbl tbody tr:hover{background:var(--bg)}
           </div>
           <div class="fg"><label>Locadora <span class="req">*</span></label><select id="c-locadora" required></select>
             <div class="otherwrap" id="c-locadora-other"><input type="text" id="c-locadora-new" placeholder="Digite a locadora"></div>
+            <div id="c-loc-email" style="font-size:11.5px;margin-top:6px;display:none;align-items:center;gap:5px"></div>
           </div>
           <div class="fg"><label>Solicitante responsável <span class="req">*</span></label><input type="text" id="c-solic" required></div>
           <div class="fg"><label>E-mail do solicitante <span class="req">*</span></label><input type="email" id="c-email" required></div>
@@ -451,6 +502,7 @@ table.tbl tbody tr:hover{background:var(--bg)}
       <div class="fg"><label>Unidade</label><select id="cd-f-uni"></select></div>
       <div class="fg"><label>Situação</label><select id="cd-f-st"></select></div>
       <button class="btn ghost sm" id="cd-csv"><i data-lucide="download"></i> Exportar CSV</button>
+      <button class="btn ghost sm" id="cd-dellog"><i data-lucide="history"></i> Exclusões</button>
     </div>
     <div class="tablewrap"><table class="tbl" id="c-tbl"></table></div>
   </div>
@@ -468,7 +520,7 @@ var UNIDADES=['01ª GERES','02ª GERES','03ª GERES','04ª GERES','05ª GERES','
 var MODELOS=['Fiat Toro','Fiat Ducato','Volkswagen Virtus','Volkswagen Polo','Renault Master','Chevrolet Spin','Citroen C3','Outros'];
 var MOTIVOS=['Manutenção Preventiva','Manutenção Corretiva','Troca de Pneu','Pane Elétrica','Reboque','Sinistro','Outros'];
 /* locadora -> e-mail(s) oficiais. Várias podem ter mais de um e-mail (separados por vírgula). */
-var LOCADORAS_BASE={'Andrade Barros Locadora':'agendamento@locadora.net.br','Cs Brasil Frotas':'atendimento.pernambuco@csbrasilservicos.com.br','Locaralpi':'andre@alpirentacar.com.br, comercial@alpirentacar.com.br','Alpi Negociavel':'andre@alpirentacar.com.br, comercial@alpirentacar.com.br','Loc Locadora':'locfilialrecife@gmail.com','Avenida Locadora':'avenidalocadora10@gmail.com'};
+var LOCADORAS_BASE={'Andrade Barros Locadora':'agendamento@locadora.net.br','Cs Brasil Frotas':'atendimento.pernambuco@csbrasilservicos.com.br, reservas.pe@csbrasilservicos.com.br','Locaralpi':'andre@alpirentacar.com.br, comercial@alpirentacar.com.br','Alpi Negociavel':'andre@alpirentacar.com.br, comercial@alpirentacar.com.br','Loc Locadora':'locfilialrecife@gmail.com','Avenida Locadora':'avenidalocadora10@gmail.com'};
 var EMAIL_CTRANS='transportectrans@gmail.com';
 /* customizações salvas (unidades e locadoras adicionadas pelo usuário) */
 var K_UNI='ctrans_unidades_v1', K_LOC='ctrans_locadoras_v1';
@@ -506,7 +558,7 @@ var SUP=null;      /* supervisor logado */
 /* =================== NUVEM (Supabase) + EMAIL (EmailJS) =================== */
 /* Config salva localmente e compartilhável por link (#cfg=...). Preencha pelo botão "Nuvem". */
 var K_CFG='ctrans_cloud_cfg_v1';
-var CLOUD=load(K_CFG,{url:'',anon:'',bucket:'anexos',table:'chamados',ejsPub:'',ejsService:'',ejsTemplate:''});
+var CLOUD=load(K_CFG,{url:'',anon:'',bucket:'anexos',table:'chamados',ejsPub:'',ejsService:'',ejsTemplate:'',webhook:'',alertEmail:''});
 (function(){try{var h=location.hash.match(/cfg=([^&]+)/);if(h){var c=JSON.parse(decodeURIComponent(escape(atob(h[1]))));CLOUD=Object.assign(CLOUD,c);save(K_CFG,CLOUD);}}catch(e){}})();
 var SB=null;
 function cloudOn(){return !!(CLOUD.url&&CLOUD.anon);}
@@ -531,6 +583,29 @@ function uploadAtt(a){ /* a={name,type,data(dataURL)} -> retorna {name,type,data
 }
 function cloudInsert(t){if(!SB)return;try{SB.from(CLOUD.table).insert([{id:t.id,data:t}]).then(function(){}).catch(function(){});}catch(e){}}
 function cloudUpdate(t){if(!SB)return;try{SB.from(CLOUD.table).update({data:t}).eq('id',t.id).then(function(){}).catch(function(){});}catch(e){}}
+function cloudDelete(id){if(!SB)return;try{SB.from(CLOUD.table).delete().eq('id',id).then(function(){}).catch(function(){});}catch(e){}}
+/* ---- LOG DE EXCLUSÕES (com justificativa) ---- */
+var K_DELLOG='ctrans_dellog_v1';
+function delLog(){try{return JSON.parse(localStorage.getItem(K_DELLOG)||'[]');}catch(e){return [];}}
+function logDel(e){try{var a=delLog();a.unshift(e);if(a.length>500)a=a.slice(0,500);localStorage.setItem(K_DELLOG,JSON.stringify(a));}catch(_){}}
+function notifyWebhook(t){var url=(CLOUD.webhook||'').trim();if(!url)return;try{
+  var linhas=['**Placa:** '+(t.placa||'—'),'**Unidade:** '+(t.unidade||'—'),'**Veículo:** '+(t.modelo||'—'),'**Locadora:** '+(t.locadora||'—'),'**Solicitante:** '+(t.solic||'—'),'**Motivo:** '+(t.motivo||'—'),'**Situação:** '+(t.status||'—'),'**Abertura:** '+fmtDate(t.criado)];
+  var titulo='Novo chamado de manutenção — '+t.id;
+  _sendHook(titulo,linhas);
+}catch(e){}}
+function notifyWebhookStatus(t){var url=(CLOUD.webhook||'').trim();if(!url)return;try{
+  var linhas=['**Placa:** '+(t.placa||'—'),'**Unidade:** '+(t.unidade||'—'),'**Locadora:** '+(t.locadora||'—'),'**Nova situação:** '+(t.status||'—'),'**Atualizado por:** '+(t.atualizadoPor||'CTRANS'),'**Quando:** '+fmtDate(t.atualizado)];
+  if(t.obsCtrans)linhas.push('**Observação:** '+t.obsCtrans);
+  _sendHook('Atualização de status — '+t.id,linhas);
+}catch(e){}}
+function _sendHook(titulo,linhas){var url=(CLOUD.webhook||'').trim();if(!url)return;try{
+  if(/hooks\.slack\.com/i.test(url)){
+    var slackTxt=':wrench: *'+titulo+'*\n'+linhas.join('\n').replace(/\*\*/g,'*');
+    fetch(url,{method:'POST',mode:'no-cors',body:JSON.stringify({text:slackTxt})}).catch(function(){});
+  }else{
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'Chamados CTRANS',content:':wrench: **'+titulo+'**\n'+linhas.join('\n')})}).catch(function(){});
+  }
+}catch(e){}}
 function cloudLoadAll(cb){if(!SB){cb&&cb();return;}try{SB.from(CLOUD.table).select('data').order('created_at',{ascending:false}).then(function(r){
   if(r&&r.data&&r.data.length){TICKETS=r.data.map(function(x){return x.data;});persistTickets();}cb&&cb();
 }).catch(function(){cb&&cb();});}catch(e){cb&&cb();}}
@@ -578,6 +653,13 @@ bindOther('c-unidade','c-unidade-other');
 bindOther('c-modelo','c-modelo-other');
 bindOther('c-locadora','c-locadora-other');
 bindOther('c-motivo','c-motivo-other');
+/* ===== associação automática do e-mail da locadora ao selecionar ===== */
+function updLocEmail(){var sel=$('#c-locadora'),box=$('#c-loc-email');if(!sel||!box)return;var v=sel.value,em=LOCADORAS[v];
+  if(v&&v!=='Outros'&&em){box.style.display='flex';box.style.color='var(--ok)';box.innerHTML='<i data-lucide="mail-check"></i> E-mail associado automaticamente: <b>'+esc(em)+'</b>';}
+  else if(v==='Outros'){box.style.display='flex';box.style.color='var(--warn)';box.innerHTML='<i data-lucide="info"></i> Use “Adicionar locadora e e-mail” para cadastrar o e-mail desta locadora.';}
+  else if(v&&v!=='Outros'){box.style.display='flex';box.style.color='var(--warn)';box.innerHTML='<i data-lucide="info"></i> Locadora sem e-mail cadastrado — cadastre em “Adicionar locadora e e-mail”.';}
+  else{box.style.display='none';box.innerHTML='';}icons();}
+$('#c-locadora').addEventListener('change',updLocEmail);
 /* resolve valor final de um select considerando "Outros" + persiste quando preciso */
 function resolveField(selId,newId,kind){var sel=$('#'+selId),v=sel?sel.value:'';if(v==='Outros'){var nv=($('#'+newId)||{}).value;nv=(nv||'').trim();if(!nv)return '';if(kind==='uni')saveExtraUni(nv);return nv;}return v;}
 /* ===== adicionar locadora + e-mail ===== */
@@ -588,6 +670,7 @@ $('#al-save').addEventListener('click',function(){
   saveLocadora(nome,email);
   refillSelects();
   var ls=$('#c-locadora');if(ls){ls.value=nome;}
+  try{updLocEmail();}catch(e){}
   $('#al-nome').value='';$('#al-email').value='';
   var w=$('#add-loc-wrap');if(w)w.classList.remove('on');
   alert('Locadora "'+nome+'" salva e disponível na lista.');
@@ -682,7 +765,7 @@ function prefillChamado(){
 /* =================== EMAIL (confirmação) =================== */
 function saud(){var h=new Date().getHours();return h<12?'Bom dia':(h<18?'Boa tarde':'Boa noite');}
 function buildEmail(t){
-  var dest=[t.email,EMAIL_CTRANS,LOCADORAS[t.locadora]||''].filter(Boolean);
+  var dest=[t.email,EMAIL_CTRANS,(CLOUD.alertEmail||''),LOCADORAS[t.locadora]||''].filter(function(v,i,a){return v&&a.indexOf(v)===i;});
   var subject='Confirmação de abertura de chamado — '+t.id+' — '+t.placa;
   var body=[saud()+',','',
     'Confirmamos a ABERTURA do chamado de manutenção abaixo. A solicitação foi direcionada à locadora responsável e à equipe da CTRANS.','',
@@ -702,20 +785,49 @@ function buildEmail(t){
     'Atenciosamente,','CTRANS — Secretaria Estadual de Saúde de Pernambuco'].join('\n');
   return {dest:dest,subject:subject,body:body};
 }
+function _splitDest(dest){return dest.join(',').split(/[,;\/]/).map(function(s){return s.trim();}).filter(function(v,i,a){return v&&/.+@.+\..+/.test(v)&&a.indexOf(v)===i;});}
+/* ---- LOG DE ENVIOS DE E-MAIL ---- */
+var K_MAILLOG='ctrans_maillog_v1';
+function mailLog(){try{return JSON.parse(localStorage.getItem(K_MAILLOG)||'[]');}catch(e){return [];}}
+function logMail(e){try{var a=mailLog();a.unshift(e);if(a.length>400)a=a.slice(0,400);localStorage.setItem(K_MAILLOG,JSON.stringify(a));}catch(_){}}
+function logClear(){try{localStorage.removeItem(K_MAILLOG);}catch(_){}}
+function _errTxt(err){try{return (err&&(err.text||err.message))||(typeof err==='string'?err:JSON.stringify(err))||'erro desconhecido';}catch(_){return 'erro desconhecido';}}
 function sendEmail(t){var m=buildEmail(t);
   if(emailAuto()&&window.emailjs){
     try{
       emailjs.init(CLOUD.ejsPub);
-      emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,{
-        to_email:m.dest.join(','),subject:m.subject,message:m.body,
-        chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic
-      }).then(function(){},function(){mailtoFallback(m);});
+      var alvos=_splitDest(m.dest);
+      if(!alvos.length){logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:'(nenhum destinatário válido)',status:'FALHA',erro:'lista de e-mails vazia'});mailtoFallback(m);return;}
+      alvos.forEach(function(addr){
+        emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,{
+          to_email:addr,email:addr,recipient:addr,reply_to:EMAIL_CTRANS,subject:m.subject,message:m.body,
+          chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic
+        }).then(function(){logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:addr,status:'OK',erro:''});},
+          function(err){logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:addr,status:'FALHA',erro:_errTxt(err)});});
+      });
       return;
-    }catch(e){}
+    }catch(e){logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:'(exceção)',status:'FALHA',erro:_errTxt(e)});}
   }
+  logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:(m.dest||[]).join(', '),status:'FALLBACK',erro:'EmailJS não configurado — abriu app de e-mail (mailto)'});
   mailtoFallback(m);
 }
 function mailtoFallback(m){var href='mailto:'+encodeURIComponent(m.dest.join(','))+'?subject='+encodeURIComponent(m.subject)+'&body='+encodeURIComponent(m.body);try{window.location.href=href;}catch(e){}}
+function buildStatusEmail(t){
+  var dest=[t.email,EMAIL_CTRANS,(CLOUD.alertEmail||'')].filter(function(v,i,a){return v&&a.indexOf(v)===i;});
+  var subject='Atualização do chamado '+t.id+' — '+t.status;
+  var body=['Prezado(a) '+(t.solic||'solicitante')+',','',
+    'A situação do seu chamado de manutenção foi atualizada.','',
+    'Chamado: '+t.id,'Placa do veículo: '+t.placa,'Unidade: '+t.unidade,
+    'Locadora: '+t.locadora,'Nova situação: '+t.status,
+    'Atualizado por: '+(t.atualizadoPor||'CTRANS'),'Data da atualização: '+fmtDate(t.atualizado)];
+  if(t.obsCtrans)body.push('Observação da CTRANS: '+t.obsCtrans);
+  body=body.concat(['','Você pode acompanhar o andamento diretamente no painel do sistema de chamados.','','Atenciosamente,','CTRANS — Secretaria Estadual de Saúde de Pernambuco']);
+  return {dest:dest,subject:subject,body:body.join('\n')};
+}
+function sendStatusEmail(t){var m=buildStatusEmail(t);
+  if(emailAuto()&&window.emailjs){try{emailjs.init(CLOUD.ejsPub);var alvos=_splitDest(m.dest);if(!alvos.length){logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:'(nenhum destinatário válido)',status:'FALHA',erro:'lista de e-mails vazia'});return false;}alvos.forEach(function(addr){emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,{to_email:addr,email:addr,recipient:addr,reply_to:EMAIL_CTRANS,subject:m.subject,message:m.body,chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic}).then(function(){logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:addr,status:'OK',erro:''});},function(err){logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:addr,status:'FALHA',erro:_errTxt(err)});});});return true;}catch(e){logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:'(exceção)',status:'FALHA',erro:_errTxt(e)});}}
+  return false;
+}
 /* =================== ABRIR CHAMADO =================== */
 $('#form-chamado').addEventListener('submit',function(e){e.preventDefault();
   var reqFiles=[['f-placa','Foto da Placa'],['f-km','Foto da Quilometragem no Painel']];
@@ -740,7 +852,7 @@ $('#form-chamado').addEventListener('submit',function(e){e.preventDefault();
   var keys=Object.keys(t.anexos);
   Promise.all(keys.map(function(k){return uploadAtt(t.anexos[k]);})).then(function(ups){
     keys.forEach(function(k,ix){t.anexos[k]=ups[ix];});
-    TICKETS.unshift(t);persistTickets();cloudInsert(t);
+    TICKETS.unshift(t);persistTickets();cloudInsert(t);notifyWebhook(t);
     $('#c-msg').innerHTML='Chamado <b>'+t.id+'</b> aberto com sucesso! Confirmação '+(emailAuto()?'enviada automaticamente':'direcionada')+' para: '+esc(m.dest.join(', '))+'.'+
       (emailAuto()?'':' <a href="#" id="c-sendmail" style="color:var(--accent);font-weight:700">Enviar e-mail de confirmação agora</a>.');
     var sb=$('#c-sendmail');if(sb)sb.addEventListener('click',function(ev){ev.preventDefault();sendEmail(t);});
@@ -757,16 +869,20 @@ var CH={};
 function chart(id){var el=document.getElementById(id);if(!el)return null;if(CH[id])return CH[id];CH[id]=echarts.init(el);return CH[id];}
 window.addEventListener('resize',function(){Object.keys(CH).forEach(function(k){try{CH[k].resize();}catch(e){}});});
 var PAL=['#6E8BA0','#C08A5E','#5C8A6B','#3E6E68','#9C8BA6','#B0564A','#89986F','#C9A15E'];
+var LASTOPT={}; /* guarda a última opção de cada gráfico (p/ ampliar e p/ PDF) */
+function tc(){var dark=document.body.getAttribute('data-theme')==='dark';return dark?{ink:'#F1EBE1',muted:'#A99F92',lab:'#C9BFB2'}:{ink:'#2B2724',muted:'#8A8178',lab:'#6b635a'};}
 function baseGrid(){return {left:'3%',right:'4%',bottom:'3%',top:28,containLabel:true};}
 function countBy(arr,fn){var m={};arr.forEach(function(x){var k=fn(x)||'—';m[k]=(m[k]||0)+1;});return m;}
 function toPairs(obj){return Object.keys(obj).map(function(k){return [k,obj[k]];}).sort(function(a,b){return b[1]-a[1];});}
-function donut(id,obj,colorMap){var c=chart(id);if(!c)return;var data=Object.keys(obj).map(function(k,i){return {name:k,value:obj[k],itemStyle:{color:(colorMap&&colorMap[k])||PAL[i%PAL.length]}};});
-  c.setOption({tooltip:{trigger:'item',formatter:'{b}: {c} ({d}%)'},legend:{bottom:0,textStyle:{color:'#8A8178',fontSize:11}},
-    series:[{type:'pie',radius:['45%','70%'],center:['50%','44%'],avoidLabelOverlap:true,label:{formatter:'{b}\n{c}',fontSize:11,color:'#2B2724'},data:data.length?data:[{name:'Sem dados',value:0}]}]});}
-function barsH(id,pairs,color){var c=chart(id);if(!c)return;pairs=pairs.slice(0,10).reverse();
-  c.setOption({grid:baseGrid(),tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},xAxis:{type:'value',axisLabel:{color:'#8A8178'}},
-    yAxis:{type:'category',data:pairs.map(function(p){return p[0];}),axisLabel:{color:'#2B2724',fontSize:11}},
-    series:[{type:'bar',data:pairs.map(function(p){return p[1];}),itemStyle:{color:color||'#3E6E68',borderRadius:[0,6,6,0]},label:{show:true,position:'right',color:'#6b635a',fontSize:11}}]});}
+function donut(id,obj,colorMap){var c=chart(id);if(!c)return;var T=tc();var data=Object.keys(obj).map(function(k,i){return {name:k,value:obj[k],itemStyle:{color:(colorMap&&colorMap[k])||PAL[i%PAL.length]}};});
+  var opt={tooltip:{trigger:'item',formatter:'{b}: {c} ({d}%)'},legend:{bottom:0,textStyle:{color:T.muted,fontSize:11}},
+    series:[{type:'pie',radius:['45%','70%'],center:['50%','44%'],avoidLabelOverlap:true,label:{formatter:'{b}\n{c}',fontSize:11,color:T.ink},data:data.length?data:[{name:'Sem dados',value:0}]}]};
+  LASTOPT[id]=opt;c.setOption(opt,true);}
+function barsH(id,pairs,color){var c=chart(id);if(!c)return;var T=tc();pairs=pairs.slice(0,10).reverse();
+  var opt={grid:baseGrid(),tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},xAxis:{type:'value',axisLabel:{color:T.muted}},
+    yAxis:{type:'category',data:pairs.map(function(p){return p[0];}),axisLabel:{color:T.ink,fontSize:11}},
+    series:[{type:'bar',data:pairs.map(function(p){return p[1];}),itemStyle:{color:color||'#3E6E68',borderRadius:[0,6,6,0]},label:{show:true,position:'right',color:T.lab,fontSize:11}}]};
+  LASTOPT[id]=opt;c.setOption(opt,true);}
 var STCOLOR={'Aberto':'#6E8BA0','Em Andamento':'#C08A5E','Resolvido':'#5C8A6B','Com Feedback':'#3E6E68'};
 /* =================== MODAL MEDIA =================== */
 function openModal(html){$('#modal-body').innerHTML=html;$('#modal').classList.add('on');icons();}
@@ -800,9 +916,9 @@ function mRender(){
   donut('m-ch-status',countBy(data,function(t){return t.status;}),STCOLOR);
   barsH('m-ch-motivo',toPairs(countBy(data,function(t){return t.motivo;})),'#C08A5E');
   var rk=toPairs(countBy(data,function(t){return t.placa;})).slice(0,12);
-  $('#m-rank').innerHTML=rk.length?rk.map(function(p,i){return '<li><span class="pos">'+(i+1)+'</span><span class="nm">'+esc(p[0])+'</span><span class="ct">'+p[1]+' chamado(s)</span></li>';}).join(''):'<li><span class="nm" style="color:#8A8178">Nenhum chamado ainda.</span></li>';
+  $('#m-rank').innerHTML=rk.length?rk.map(function(p,i){return '<li data-tp="placa" data-v="'+esc(p[0])+'" title="Duplo clique: detalhes do veículo"><span class="pos">'+(i+1)+'</span><span class="nm">'+esc(p[0])+'</span><span class="ct">'+p[1]+' chamado(s)</span></li>';}).join(''):'<li><span class="nm" style="color:#8A8178">Nenhum chamado ainda.</span></li>';
   var th='<thead><tr><th>Chamado</th><th>Abertura</th><th>Placa</th><th>Modelo</th><th>Motivo</th><th>Situação</th><th>Atualizado em</th><th>Anexos</th></tr></thead>';
-  var tb='<tbody>'+(data.length?data.map(function(t){return '<tr><td>'+esc(t.id)+'</td><td>'+fmtDate(t.criado)+'</td><td>'+esc(t.placa)+'</td><td>'+esc(t.modelo)+'</td><td>'+esc(t.motivo)+'</td><td><span class="badge '+STBADGE[t.status]+'">'+esc(t.status)+'</span></td><td>'+(t.atualizado?fmtDate(t.atualizado):'—')+'</td><td>'+anexosCell(t)+'</td></tr>';}).join(''):'<tr><td colspan="8" style="text-align:center;color:#8A8178">Nenhum chamado registrado.</td></tr>')+'</tbody>';
+  var tb='<tbody>'+(data.length?data.map(function(t){return '<tr><td>'+esc(t.id)+'</td><td>'+fmtDate(t.criado)+'</td><td data-tp="placa" data-v="'+esc(t.placa)+'" title="Duplo clique: detalhes do veículo"><b>'+esc(t.placa)+'</b></td><td>'+esc(t.modelo)+'</td><td>'+esc(t.motivo)+'</td><td><span class="badge '+STBADGE[t.status]+'">'+esc(t.status)+'</span></td><td>'+(t.atualizado?fmtDate(t.atualizado):'—')+'</td><td>'+anexosCell(t)+'</td></tr>';}).join(''):'<tr><td colspan="8" style="text-align:center;color:#8A8178">Nenhum chamado registrado.</td></tr>')+'</tbody>';
   $('#m-tbl').innerHTML=th+tb;bindThumbs($('#m-tbl'));icons();
 }
 /* =================== RENDER CTRANS =================== */
@@ -851,9 +967,9 @@ function cRenderCharts(){
   barsH('c-ch-motivo',toPairs(countBy(data,function(t){return t.motivo;})),'#C08A5E');
   barsH('c-ch-unidade',toPairs(countBy(data,function(t){return t.unidade;})),'#3E6E68');
   var uni=toPairs(countBy(data,function(t){return t.unidade;}));
-  $('#c-rank-uni').innerHTML=uni.length?uni.slice(0,12).map(function(p,i){return '<li><span class="pos">'+(i+1)+'</span><span class="nm">'+esc(p[0])+'</span><span class="ct">'+p[1]+' chamado(s)</span></li>';}).join(''):'<li><span class="nm" style="color:#8A8178">Sem dados.</span></li>';
+  $('#c-rank-uni').innerHTML=uni.length?uni.slice(0,12).map(function(p,i){return '<li data-tp="unidade" data-v="'+esc(p[0])+'" title="Duplo clique: detalhes da lotação"><span class="pos">'+(i+1)+'</span><span class="nm">'+esc(p[0])+'</span><span class="ct">'+p[1]+' chamado(s)</span></li>';}).join(''):'<li><span class="nm" style="color:#8A8178">Sem dados.</span></li>';
   var veic=toPairs(countBy(data,function(t){return t.placa+' · '+t.modelo;}));
-  $('#c-rank-veic').innerHTML=veic.length?veic.slice(0,12).map(function(p,i){return '<li><span class="pos">'+(i+1)+'</span><span class="nm">'+esc(p[0])+'</span><span class="ct">'+p[1]+' chamado(s)</span></li>';}).join(''):'<li><span class="nm" style="color:#8A8178">Sem dados.</span></li>';
+  $('#c-rank-veic').innerHTML=veic.length?veic.slice(0,12).map(function(p,i){var pl=String(p[0]).split(' · ')[0];return '<li data-tp="placa" data-v="'+esc(pl)+'" title="Duplo clique: detalhes do veículo"><span class="pos">'+(i+1)+'</span><span class="nm">'+esc(p[0])+'</span><span class="ct">'+p[1]+' chamado(s)</span></li>';}).join(''):'<li><span class="nm" style="color:#8A8178">Sem dados.</span></li>';
   cCompare();
 }
 function cCompare(){
@@ -863,11 +979,12 @@ function cCompare(){
   if(ai||af||bi||bf){A=TICKETS.filter(function(t){return inRange(t.criado,ai,af);});B=TICKETS.filter(function(t){return inRange(t.criado,bi,bf);});}
   else{var now=new Date();var m0=new Date(now.getFullYear(),now.getMonth(),1);var mPrev=new Date(now.getFullYear(),now.getMonth()-1,1);
     A=TICKETS.filter(function(t){return new Date(t.criado)>=m0;});B=TICKETS.filter(function(t){return new Date(t.criado)>=mPrev&&new Date(t.criado)<m0;});}
-  var cats=STATUS;var c=chart('c-ch-cmp');if(!c)return;
-  c.setOption({grid:baseGrid(),tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},legend:{bottom:0,textStyle:{color:'#8A8178'}},
-    xAxis:{type:'category',data:cats,axisLabel:{color:'#2B2724',fontSize:10}},yAxis:{type:'value',axisLabel:{color:'#8A8178'}},
+  var cats=STATUS;var c=chart('c-ch-cmp');if(!c)return;var T=tc();
+  var opt={grid:baseGrid(),tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},legend:{bottom:0,textStyle:{color:T.muted}},
+    xAxis:{type:'category',data:cats,axisLabel:{color:T.ink,fontSize:10}},yAxis:{type:'value',axisLabel:{color:T.muted}},
     series:[{name:aLab,type:'bar',data:cats.map(function(s){return A.filter(function(t){return t.status===s;}).length;}),itemStyle:{color:'#3E6E68',borderRadius:[4,4,0,0]}},
-            {name:bLab,type:'bar',data:cats.map(function(s){return B.filter(function(t){return t.status===s;}).length;}),itemStyle:{color:'#C08A5E',borderRadius:[4,4,0,0]}}]});
+            {name:bLab,type:'bar',data:cats.map(function(s){return B.filter(function(t){return t.status===s;}).length;}),itemStyle:{color:'#C08A5E',borderRadius:[4,4,0,0]}}]};
+  LASTOPT['c-ch-cmp']=opt;c.setOption(opt,true);
 }
 $('#cp-cmp').addEventListener('click',cCompare);
 /* =================== DETALHAMENTO CTRANS =================== */
@@ -883,23 +1000,47 @@ function cFiltered(){
 }
 function cRenderTable(){
   var data=cFiltered();
-  var th='<thead><tr><th>Chamado</th><th>Abertura</th><th>Placa</th><th>Marca/Modelo</th><th>Unidade</th><th>Locadora</th><th>Solicitante</th><th>KM</th><th>Motivo</th><th>Anexos</th><th>Situação</th><th>Atualização</th></tr></thead>';
+  var th='<thead><tr><th>Chamado</th><th>Abertura</th><th>Placa</th><th>Marca/Modelo</th><th>Unidade</th><th>Locadora</th><th>Solicitante</th><th>KM</th><th>Motivo</th><th>Anexos</th><th>Situação</th><th>Atualização</th><th>Ações</th></tr></thead>';
   var rows=data.length?data.map(function(t){
-    var sel='<select data-id="'+t.id+'" class="st-sel" style="font-size:12px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;background:var(--bg)">'+STATUS.map(function(s){return '<option'+(s===t.status?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
-    return '<tr><td>'+esc(t.id)+'</td><td>'+fmtDate(t.criado)+'</td><td><b>'+esc(t.placa)+'</b></td><td>'+esc(t.modelo)+'</td><td>'+esc(t.unidade)+'</td><td>'+esc(t.locadora)+'</td><td>'+esc(t.solic)+'</td><td>'+esc(t.km)+'</td><td>'+esc(t.motivo)+'</td><td>'+anexosCell(t)+'</td><td>'+sel+'</td><td>'+(t.atualizado?('<div>'+fmtDate(t.atualizado)+'</div><div style="font-size:10px;color:#8A8178">'+esc(t.atualizadoPor||'')+'</div>'):'<span style="color:#8A8178">—</span>')+'</td></tr>';
-  }).join(''):'<tr><td colspan="12" style="text-align:center;color:#8A8178">Nenhum chamado encontrado.</td></tr>';
+    var sel='<select data-id="'+t.id+'" class="st-sel" style="font-size:12px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink)">'+STATUS.map(function(s){return '<option'+(s===t.status?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
+    var del='<button class="btn ghost sm del-btn" data-id="'+t.id+'" title="Excluir chamado (exige justificativa)" style="color:var(--bad);border-color:var(--bad);padding:6px 9px"><i data-lucide="trash-2"></i></button>';
+    return '<tr><td>'+esc(t.id)+'</td><td>'+fmtDate(t.criado)+'</td><td data-tp="placa" data-v="'+esc(t.placa)+'" title="Duplo clique: detalhes do veículo"><b>'+esc(t.placa)+'</b></td><td>'+esc(t.modelo)+'</td><td data-tp="unidade" data-v="'+esc(t.unidade)+'" title="Duplo clique: detalhes da lotação">'+esc(t.unidade)+'</td><td>'+esc(t.locadora)+'</td><td data-tp="solic" data-v="'+esc(t.solic)+'" title="Duplo clique: detalhes do condutor">'+esc(t.solic)+'</td><td>'+esc(t.km)+'</td><td>'+esc(t.motivo)+'</td><td>'+anexosCell(t)+'</td><td>'+sel+'</td><td>'+(t.atualizado?('<div>'+fmtDate(t.atualizado)+'</div><div style="font-size:10px;color:var(--muted)">'+esc(t.atualizadoPor||'')+'</div>'):'<span style="color:var(--muted)">—</span>')+'</td><td>'+del+'</td></tr>';
+  }).join(''):'<tr><td colspan="13" style="text-align:center;color:var(--muted)">Nenhum chamado encontrado.</td></tr>';
   $('#c-tbl').innerHTML=th+'<tbody>'+rows+'</tbody>';
   bindThumbs($('#c-tbl'));
   $$('.st-sel',$('#c-tbl')).forEach(function(sel){sel.addEventListener('change',function(){
     var id=sel.getAttribute('data-id');var t=TICKETS.find(function(x){return x.id===id;});if(!t)return;
     t.status=sel.value;t.atualizado=nowISO();t.atualizadoPor=SUP?SUP.u:'CTRANS';
-    persistTickets();cloudUpdate(t);cRenderTable();
+    persistTickets();cloudUpdate(t);notifyWebhookStatus(t);sendStatusEmail(t);cRenderTable();
   });});
+  $$('.del-btn',$('#c-tbl')).forEach(function(b){b.addEventListener('click',function(){excluirChamado(b.getAttribute('data-id'));});});
+  icons();
+}
+/* ===== EXCLUSÃO DE CHAMADO (com justificativa obrigatória) — área do gestor ===== */
+function excluirChamado(id){
+  var t=TICKETS.find(function(x){return x.id===id;});if(!t)return;
+  var just=prompt('Excluir o chamado '+id+' (placa '+t.placa+').\n\nInforme a JUSTIFICATIVA da exclusão (obrigatório):','');
+  if(just===null)return;
+  just=(just||'').trim();
+  if(!just){alert('A exclusão exige uma justificativa. Nada foi excluído.');return;}
+  if(!confirm('Confirmar a exclusão do chamado '+id+'?\n\nJustificativa: '+just))return;
+  logDel({ts:nowISO(),chamado:id,placa:t.placa,unidade:t.unidade,solic:t.solic,motivo:t.motivo,por:SUP?SUP.u:'CTRANS',justificativa:just});
+  TICKETS=TICKETS.filter(function(x){return x.id!==id;});
+  persistTickets();cloudDelete(id);
+  try{cRenderTable();}catch(e){}try{cRenderStatus();}catch(e){}try{cRenderCharts();}catch(e){}
+  alert('Chamado '+id+' excluído. A justificativa foi registrada no histórico de exclusões.');
+}
+/* ===== HISTÓRICO DE EXCLUSÕES ===== */
+function delLogModal(){
+  var a=delLog();
+  var rows=a.length?a.map(function(e){return '<tr><td style="padding:6px;white-space:nowrap">'+esc(fmtDate(e.ts))+'</td><td style="padding:6px">'+esc(e.chamado||'')+'</td><td style="padding:6px">'+esc(e.placa||'')+'</td><td style="padding:6px">'+esc(e.unidade||'')+'</td><td style="padding:6px">'+esc(e.por||'')+'</td><td style="padding:6px">'+esc(e.justificativa||'')+'</td></tr>';}).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:14px">Nenhuma exclusão registrada.</td></tr>';
+  openModal('<h3 style="margin:0 0 6px">Histórico de exclusões</h3><p style="color:var(--muted);font-size:13px;margin:0 0 10px">Chamados excluídos pela gestão, com a justificativa informada. Total: <b>'+a.length+'</b>.</p><div style="max-height:56vh;overflow:auto;border:1px solid var(--line);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:7px">Data/hora</th><th style="text-align:left;padding:7px">Chamado</th><th style="text-align:left;padding:7px">Placa</th><th style="text-align:left;padding:7px">Unidade</th><th style="text-align:left;padding:7px">Excluído por</th><th style="text-align:left;padding:7px">Justificativa</th></tr></thead><tbody>'+rows+'</tbody></table></div>');
   icons();
 }
 $('#cd-busca').addEventListener('input',cRenderTable);
 $('#cd-f-uni').addEventListener('change',cRenderTable);
 $('#cd-f-st').addEventListener('change',cRenderTable);
+var cdd=$('#cd-dellog');if(cdd)cdd.addEventListener('click',delLogModal);
 $('#cd-csv').addEventListener('click',function(){
   var cols=['Chamado','Abertura','Placa','Marca/Modelo','Unidade','Locadora','Solicitante','Email','KM','Motivo','Situacao','Atualizado em','Atualizado por','Descricao'];
   var lines=[cols.join(';')];
@@ -908,6 +1049,49 @@ $('#cd-csv').addEventListener('click',function(){
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='chamados_ctrans.csv';a.click();
 });
 /* =================== CONFIG DE NUVEM (modal) =================== */
+function simulaEnvioTeste(){
+  if(!(emailAuto()&&window.emailjs)){alert('Configure o EmailJS (botão Nuvem) para simular envios.');return;}
+  try{emailjs.init(CLOUD.ejsPub);}catch(e){}
+  var dOk=(CLOUD.alertEmail||EMAIL_CTRANS);
+  /* 1) envio de SUCESSO real */
+  try{emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,{to_email:dOk,email:dOk,subject:'[DIAGNÓSTICO] Teste de log (sucesso)',message:'Envio de teste disparado pelo painel para validar o log.'}).then(
+    function(){logMail({ts:nowISO(),tipo:'Teste',chamado:'DIAGNÓSTICO',dest:dOk,status:'OK',erro:''});mailLogModal();},
+    function(err){logMail({ts:nowISO(),tipo:'Teste',chamado:'DIAGNÓSTICO',dest:dOk,status:'FALHA',erro:_errTxt(err)});mailLogModal();});
+  }catch(e){logMail({ts:nowISO(),tipo:'Teste',chamado:'DIAGNÓSTICO',dest:dOk,status:'FALHA',erro:_errTxt(e)});}
+  /* 2) FALHA proposital (template inexistente) para validar o registro de erro */
+  try{emailjs.send(CLOUD.ejsService,'template_inexistente_diag',{to_email:'diagnostico@teste.local',subject:'x',message:'x'}).then(
+    function(){logMail({ts:nowISO(),tipo:'Teste',chamado:'DIAGNÓSTICO',dest:'diagnostico@teste.local',status:'OK',erro:''});mailLogModal();},
+    function(err){logMail({ts:nowISO(),tipo:'Teste',chamado:'DIAGNÓSTICO',dest:'diagnostico@teste.local (falha proposital)',status:'FALHA',erro:_errTxt(err)});mailLogModal();});
+  }catch(e){logMail({ts:nowISO(),tipo:'Teste',chamado:'DIAGNÓSTICO',dest:'diagnostico@teste.local (falha proposital)',status:'FALHA',erro:_errTxt(e)});}
+}
+function mailLogModal(){
+  var a=mailLog();
+  var okN=a.filter(function(e){return e.status==='OK';}).length;
+  var failN=a.filter(function(e){return e.status==='FALHA';}).length;
+  var fbN=a.filter(function(e){return e.status==='FALLBACK';}).length;
+  var rows=a.length?a.map(function(e){
+    var cor=e.status==='OK'?'#5C8A6B':(e.status==='FALHA'?'#B0564A':'#C08A5E');
+    return '<tr><td style="padding:6px;white-space:nowrap">'+esc(fmtDate(e.ts))+'</td><td style="padding:6px">'+esc(e.tipo||'')+'</td><td style="padding:6px">'+esc(e.chamado||'')+'</td><td style="padding:6px">'+esc(e.dest||'')+'</td><td style="padding:6px;color:'+cor+';font-weight:700">'+esc(e.status)+'</td><td style="padding:6px;font-size:11px;color:#8A8178">'+esc(e.erro||'')+'</td></tr>';
+  }).join(''):'<tr><td colspan="6" style="text-align:center;color:#8A8178;padding:14px">Nenhum envio registrado ainda.</td></tr>';
+  var html='<h3 style="margin:0 0 6px">Log de envios de e-mail</h3>'+
+    '<p style="color:var(--muted);font-size:13px;margin:0 0 10px">Registro dos disparos de e-mail (sucessos e falhas), por destinatário. Total: <b>'+a.length+'</b> · <span style="color:#5C8A6B;font-weight:700">'+okN+' OK</span> · <span style="color:#B0564A;font-weight:700">'+failN+' falha(s)</span>'+(fbN?(' · <span style="color:#C08A5E;font-weight:700">'+fbN+' fallback</span>'):'')+'</p>'+
+    '<div style="max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:7px">Data/hora</th><th style="text-align:left;padding:7px">Tipo</th><th style="text-align:left;padding:7px">Chamado</th><th style="text-align:left;padding:7px">Destinatário</th><th style="text-align:left;padding:7px">Status</th><th style="text-align:left;padding:7px">Erro</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">'+
+    '<button class="btn ghost" id="ml-csv"><i data-lucide="download"></i> Exportar CSV</button>'+
+    '<button class="btn ghost" id="ml-sim"><i data-lucide="flask-conical"></i> Simular envio (teste)</button>'+
+    '<button class="btn ghost" id="ml-clear"><i data-lucide="trash-2"></i> Limpar log</button>'+
+    '</div>';
+  openModal(html);
+  var cc=$('#ml-clear');if(cc)cc.addEventListener('click',function(){if(confirm('Limpar todo o log de envios?')){logClear();mailLogModal();}});
+  var sm=$('#ml-sim');if(sm)sm.addEventListener('click',simulaEnvioTeste);
+  var cs=$('#ml-csv');if(cs)cs.addEventListener('click',function(){
+    var lines=[['Data/hora','Tipo','Chamado','Destinatario','Status','Erro'].join(';')];
+    mailLog().forEach(function(e){lines.push([fmtDate(e.ts),e.tipo||'',e.chamado||'',e.dest||'',e.status,(e.erro||'').replace(/[;\n]/g,' ')].map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}).join(';'));});
+    var blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+    var el=document.createElement('a');el.href=URL.createObjectURL(blob);el.download='log_envios_email.csv';el.click();
+  });
+  icons();
+}
 function cloudModal(){
   var c=CLOUD;
   var html='<h3 style="margin:0 0 6px">Configurar nuvem e e-mail automático</h3>'+
@@ -920,14 +1104,17 @@ function cloudModal(){
     fld('cf-ejspub','EmailJS Public Key',c.ejsPub,'xxxxxxxx')+
     fld('cf-ejssvc','EmailJS Service ID',c.ejsService,'service_xxxx')+
     fld('cf-ejstpl','EmailJS Template ID',c.ejsTemplate,'template_xxxx')+
+    '<div class="fg full"><label>Webhook de alerta (Discord ou Slack) — opcional</label><input type="text" id="cf-webhook" value="'+esc(c.webhook||'')+'" placeholder="https://discord.com/api/webhooks/... ou https://hooks.slack.com/services/..."></div>'+
+    '<div class="fg full"><label>E-mail de alerta adicional (Gmail) — opcional</label><input type="text" id="cf-alertmail" value="'+esc(c.alertEmail||'')+'" placeholder="ex.: transportectrans@gmail.com (CTRANS já recebe automaticamente)"></div>'+
     '</div>'+
     '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">'+
     '<button class="btn" id="cf-save"><i data-lucide="save"></i> Salvar e conectar</button>'+
     '<button class="btn ghost" id="cf-link"><i data-lucide="link"></i> Gerar link compartilhável</button>'+
+    '<button class="btn ghost" id="cf-log"><i data-lucide="activity"></i> Ver log de envios</button>'+
     '</div><div id="cf-out" style="margin-top:12px;font-size:12px;color:var(--muted);word-break:break-all"></div>';
   openModal(html);
   $('#cf-save').addEventListener('click',function(){
-    CLOUD={url:$('#cf-url').value.trim(),anon:$('#cf-anon').value.trim(),bucket:($('#cf-bucket').value.trim()||'anexos'),table:($('#cf-table').value.trim()||'chamados'),ejsPub:$('#cf-ejspub').value.trim(),ejsService:$('#cf-ejssvc').value.trim(),ejsTemplate:$('#cf-ejstpl').value.trim()};
+    CLOUD={url:$('#cf-url').value.trim(),anon:$('#cf-anon').value.trim(),bucket:($('#cf-bucket').value.trim()||'anexos'),table:($('#cf-table').value.trim()||'chamados'),ejsPub:$('#cf-ejspub').value.trim(),ejsService:$('#cf-ejssvc').value.trim(),ejsTemplate:$('#cf-ejstpl').value.trim(),webhook:$('#cf-webhook').value.trim(),alertEmail:$('#cf-alertmail').value.trim()};
     save(K_CFG,CLOUD);initSB();setCloudBadge();cloudSubscribe();
     cloudLoadAll(function(){try{mRender();}catch(e){}try{cRender();}catch(e){}});
     $('#cf-out').innerHTML=cloudOn()?'<span style="color:var(--ok,#5C8A6B)">Conectado à nuvem Supabase.</span>':'Configuração salva (modo local).';
@@ -935,12 +1122,29 @@ function cloudModal(){
   $('#cf-link').addEventListener('click',function(){
     try{var cfg=btoa(unescape(encodeURIComponent(JSON.stringify(CLOUD))));var url=location.href.split('#')[0]+'#cfg='+cfg;$('#cf-out').innerHTML='Link com as credenciais embutidas (compartilhe com cuidado):<br>'+esc(url);}catch(e){}
   });
+  var clg=$('#cf-log');if(clg)clg.addEventListener('click',mailLogModal);
 }
 function fld(id,lab,val,ph){return '<div class="fg"><label>'+esc(lab)+'</label><input type="text" id="'+id+'" value="'+esc(val||'')+'" placeholder="'+esc(ph||'')+'"></div>';}
 var ccb=$('#c-cloud-btn');if(ccb)ccb.addEventListener('click',cloudModal);
 /* =================== RELATÓRIO EXECUTIVO MENSAL (PDF) =================== */
 function monthTickets(){var now=new Date();var y=now.getFullYear(),mo=now.getMonth();return TICKETS.filter(function(t){var d=new Date(t.criado);return !isNaN(d)&&d.getFullYear()===y&&d.getMonth()===mo;});}
-function gerarPDF(){
+/* gera a imagem PNG de um gráfico (a partir da última opção), forçando cores escuras p/ impressão */
+function chartImg(id){
+  if(!LASTOPT[id]||!window.echarts)return null;
+  var div=document.createElement('div');div.style.cssText='position:absolute;left:-10000px;top:0;width:680px;height:380px';
+  document.body.appendChild(div);var inst=null,url=null;
+  try{inst=echarts.init(div,null,{renderer:'canvas'});var o=JSON.parse(JSON.stringify(LASTOPT[id]));
+    if(o.legend&&o.legend.textStyle)o.legend.textStyle.color='#333';
+    if(o.xAxis&&o.xAxis.axisLabel)o.xAxis.axisLabel.color='#333';
+    if(o.yAxis&&o.yAxis.axisLabel)o.yAxis.axisLabel.color='#333';
+    if(o.series)o.series.forEach(function(s){if(s.label)s.label.color='#333';});
+    inst.setOption(o);url=inst.getDataURL({type:'png',pixelRatio:2,backgroundColor:'#ffffff'});
+  }catch(e){url=null;}
+  try{if(inst)inst.dispose();}catch(e){}try{document.body.removeChild(div);}catch(e){}
+  return url;
+}
+function gerarPDF(ctx){
+  if(!ctx)ctx=($('#app-ctrans').classList.contains('on'))?'ctrans':'manut';
   var JS=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
   if(!JS){alert('Biblioteca de PDF não carregada. Verifique a conexão com a internet.');return;}
   var doc=new JS({orientation:'landscape',unit:'pt',format:'a4'});
@@ -969,6 +1173,18 @@ function gerarPDF(){
   var yA=tabDe(cont(mes,'unidade'),'Chamados por unidade',y1);
   var yB=tabDe(cont(mes,'locadora'),'Chamados por locadora',yA+22);
   tabDe(cont(mes,'motivo'),'Chamados por motivo',yB+22);
+  /* ===== página de gráficos (visíveis no PDF e na impressão) ===== */
+  try{if(ctx==='manut')mRender();else cRenderCharts();}catch(e){}
+  var gids=ctx==='manut'?[['m-ch-status','Chamados por situação'],['m-ch-motivo','Chamados por motivo']]:[['c-ch-status','Situação dos chamados'],['c-ch-motivo','Motivo mais solicitado'],['c-ch-unidade','Ranking de unidades'],['c-ch-cmp','Comparativo de períodos']];
+  var imgs=gids.map(function(p){return {t:p[1],url:chartImg(p[0])};}).filter(function(x){return x.url;});
+  if(imgs.length){
+    doc.addPage('a4','landscape');
+    doc.setFontSize(12);doc.setTextColor(60,50,40);doc.text('Gráficos do painel',40,40);
+    var pw=doc.internal.pageSize.getWidth();var colW=(pw-80-20)/2;var chH=185;var x0=40,y0=62;
+    imgs.forEach(function(im,i){var col=i%2,row=Math.floor(i/2);var x=x0+col*(colW+20),y=y0+row*(chH+30);
+      doc.setFontSize(10);doc.setTextColor(80,70,60);doc.text(im.t,x,y-6);
+      try{doc.addImage(im.url,'PNG',x,y,colW,chH);}catch(e){}});
+  }
   doc.addPage('a4','landscape');
   doc.setFontSize(12);doc.setTextColor(60,50,40);doc.text('Detalhamento dos chamados do mês',40,40);
   doc.autoTable({startY:52,theme:'grid',styles:{fontSize:8,cellPadding:3},headStyles:{fillColor:[110,139,160]},
@@ -978,11 +1194,51 @@ function gerarPDF(){
   if(!mes.length){doc.setFontSize(10);doc.setTextColor(120);doc.text('Nenhum chamado registrado no mês de referência.',40,70);}
   doc.save('Relatorio_Executivo_Chamados_'+now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'.pdf');
 }
-var mp=$('#m-pdf');if(mp)mp.addEventListener('click',gerarPDF);
-var cp=$('#c-pdf');if(cp)cp.addEventListener('click',gerarPDF);
+var mp=$('#m-pdf');if(mp)mp.addEventListener('click',function(){gerarPDF('manut');});
+var cp=$('#c-pdf');if(cp)cp.addEventListener('click',function(){gerarPDF('ctrans');});
 /* ===== atualização ao vivo do mural de status ===== */
 var lr=$('#live-refresh');if(lr)lr.addEventListener('click',function(){cloudLoadAll(function(){cRenderStatus();icons();});});
 setInterval(function(){var pg=document.getElementById('cpage-status');if(pg&&pg.classList.contains('active'))cRenderStatus();},15000);
+/* =================== TEMA CLARO/ESCURO =================== */
+function applyTheme(dark){
+  document.body.setAttribute('data-theme',dark?'dark':'light');
+  try{localStorage.setItem('ctrans_theme',dark?'dark':'light');}catch(e){}
+  var btn=document.getElementById('themeToggle');
+  if(btn)btn.innerHTML=dark?'<i data-lucide="sun"></i><span>Claro</span>':'<i data-lucide="moon"></i><span>Escuro</span>';
+  try{if($('#app-manut').classList.contains('on'))mRender();}catch(e){}
+  try{if($('#app-ctrans').classList.contains('on'))cRender();}catch(e){}
+  setTimeout(function(){Object.keys(CH).forEach(function(k){try{CH[k].resize();}catch(e){}});},60);
+  icons();
+}
+(function(){var saved='light';try{saved=localStorage.getItem('ctrans_theme')||'light';}catch(e){}applyTheme(saved==='dark');})();
+var tgl=document.getElementById('themeToggle');if(tgl)tgl.addEventListener('click',function(){applyTheme(document.body.getAttribute('data-theme')!=='dark');});
+/* =================== AMPLIAR GRÁFICO (clique no painel) =================== */
+function ampliarGrafico(id,titulo){
+  if(!id||!LASTOPT[id]){return;}
+  openModal('<h3 style="margin:0 0 10px">'+esc(titulo||'Gráfico')+'</h3><div id="modal-chart" class="modal-chart"></div>');
+  setTimeout(function(){var el=document.getElementById('modal-chart');if(!el||!window.echarts)return;var c=echarts.init(el);var opt=JSON.parse(JSON.stringify(LASTOPT[id]));try{c.setOption(opt);}catch(e){}var rz=function(){try{c.resize();}catch(e){}};window.addEventListener('resize',rz);var mc=$('#modal-close');if(mc)mc.addEventListener('click',function(){window.removeEventListener('resize',rz);try{c.dispose();}catch(e){}},{once:true});},70);
+}
+(function(){$$('.card').forEach(function(card){var ch=card.querySelector('.chart');if(!ch)return;card.classList.add('chart-card');if(!card.querySelector('.zoom-hint')){var z=document.createElement('div');z.className='zoom-hint';z.innerHTML='<i data-lucide="maximize-2"></i>';card.appendChild(z);}card.addEventListener('click',function(e){if(e.target.closest('select,button,a,input'))return;var h3=card.querySelector('h3');ampliarGrafico(ch.id,h3?h3.textContent.trim():'Gráfico');});});})();
+/* =================== DETALHE POR DUPLO CLIQUE (placa/condutor/lotação) =================== */
+function abrirDetalhe(tp,v){
+  if(!tp||!v)return;var list,titulo;
+  if(tp==='placa'){list=TICKETS.filter(function(t){return t.placa===v;});titulo='Veículo · '+v;}
+  else if(tp==='solic'){list=TICKETS.filter(function(t){return t.solic===v;});titulo='Condutor · '+v;}
+  else if(tp==='unidade'){list=TICKETS.filter(function(t){return t.unidade===v;});titulo='Lotação · '+v;}
+  else return;
+  list=list.slice().sort(function(a,b){return new Date(b.criado)-new Date(a.criado);});
+  var st=countBy(list,function(t){return t.status;});
+  var resumo=STATUS.map(function(s){return '<span class="badge '+STBADGE[s]+'" style="margin:0 6px 6px 0">'+s+': '+(st[s]||0)+'</span>';}).join('');
+  var cards=list.length?list.map(function(t){
+    return '<div class="card" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center"><b style="font-size:14px">'+esc(t.id)+'</b><span class="badge '+STBADGE[t.status]+'">'+esc(t.status)+'</span></div>'+
+      '<div style="font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.75"><b>Placa:</b> '+esc(t.placa)+' &nbsp;·&nbsp; <b>Modelo:</b> '+esc(t.modelo)+'<br><b>Unidade:</b> '+esc(t.unidade)+'<br><b>Locadora:</b> '+esc(t.locadora)+' ('+esc(LOCADORAS[t.locadora]||'sem e-mail cadastrado')+')<br><b>Solicitante:</b> '+esc(t.solic)+' &nbsp;·&nbsp; '+esc(t.email||'—')+'<br><b>KM:</b> '+esc(t.km)+' &nbsp;·&nbsp; <b>Motivo:</b> '+esc(t.motivo)+'<br><b>Abertura:</b> '+fmtDate(t.criado)+'<br><b>Atualização:</b> '+(t.atualizado?fmtDate(t.atualizado)+' por '+esc(t.atualizadoPor||'CTRANS'):'—')+(t.obsCtrans?('<br><b>Obs. CTRANS:</b> '+esc(t.obsCtrans)):'')+'</div>'+
+      '<div style="margin-top:8px;font-size:12.5px"><b>Descrição:</b><br>'+esc(t.desc||'—')+'</div>'+
+      '<div style="margin-top:10px"><div style="font-size:11px;color:var(--muted);margin-bottom:5px;letter-spacing:.05em">ANEXOS</div>'+anexosCell(t)+'</div></div>';
+  }).join(''):'<p style="color:var(--muted)">Nenhum chamado encontrado para este item.</p>';
+  openModal('<h3 style="margin:0 0 6px">'+esc(titulo)+'</h3><p style="color:var(--muted);font-size:13px;margin:0 0 10px">Todas as informações registradas. Total de chamados: <b>'+list.length+'</b></p><div style="margin-bottom:14px">'+resumo+'</div>'+cards);
+  bindThumbs($('#modal-body'));icons();
+}
+document.addEventListener('dblclick',function(e){var el=e.target.closest('[data-tp][data-v]');if(el){abrirDetalhe(el.getAttribute('data-tp'),el.getAttribute('data-v'));}});
 /* =================== INIT =================== */
 icons();
 </script>
