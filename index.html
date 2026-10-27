@@ -440,19 +440,19 @@ body[data-theme="dark"] .filebox input[type=file]{color:var(--muted)}
           <div class="filebox">
             <div class="fl-h"><i data-lucide="scan-line"></i> Foto da Placa <span class="req">*</span></div>
             <div class="fl-d">Imagem nítida mostrando a placa dianteira ou traseira do veículo.</div>
-            <input type="file" id="f-placa" accept="image/*,video/*" data-prev="p-placa">
+            <input type="file" id="f-placa" accept="image/*,video/*,.pdf" data-prev="p-placa">
             <div class="prev" id="p-placa"></div>
           </div>
           <div class="filebox">
             <div class="fl-h"><i data-lucide="camera"></i> Evidências da Solicitação</div>
             <div class="fl-d">Imagem/vídeo evidenciando o que precisa ser trocado ou reparado (pneu, sinistro, pane, reboque…).</div>
-            <input type="file" id="f-evid" accept="image/*,video/*" data-prev="p-evid">
+            <input type="file" id="f-evid" accept="image/*,video/*,.pdf" data-prev="p-evid">
             <div class="prev" id="p-evid"></div>
           </div>
           <div class="filebox">
             <div class="fl-h"><i data-lucide="gauge"></i> Foto — Quilometragem no Painel <span class="req">*</span></div>
             <div class="fl-d">Imagem nítida mostrando o painél do veículo com a quilometragem e a data.</div>
-            <input type="file" id="f-km" accept="image/*,video/*" data-prev="p-km">
+            <input type="file" id="f-km" accept="image/*,video/*,.pdf" data-prev="p-km">
             <div class="prev" id="p-km"></div>
           </div>
           <div class="filebox">
@@ -862,17 +862,38 @@ $$('#app-ctrans .nav .tab').forEach(function(b){b.addEventListener('click',funct
 });});
 /* =================== ANEXOS (preview + base64) =================== */
 var ATT={}; /* id input -> {name,type,data} */
+/* Limites de tamanho de arquivo (imagem, vídeo ou PDF).
+   Com nuvem (Supabase) o arquivo é enviado para o armazenamento e o e-mail leva
+   apenas o LINK — por isso o limite é bem maior. Sem nuvem, o arquivo precisa caber
+   no navegador e no e-mail, então o limite é menor. O EmailJS limita as variáveis a
+   50KB; por isso NUNCA embutimos arquivos grandes no e-mail — eles vão como link. */
+var MAX_CLOUD=50*1024*1024;  /* 50 MB quando a nuvem está configurada */
+var MAX_LOCAL=4*1024*1024;   /* 4 MB quando só há armazenamento local */
+function maxFileBytes(){return cloudOn()?MAX_CLOUD:MAX_LOCAL;}
+function fmtMB(b){return (b/(1024*1024)).toFixed(b>=1024*1024?1:2)+' MB';}
+function tipoArquivoOk(f){var ty=(f.type||'');var nm=(f.name||'').toLowerCase();return /^image\//.test(ty)||/^video\//.test(ty)||ty==='application/pdf'||/\.pdf$/.test(nm)||/\.(png|jpe?g|gif|webp|heic|bmp|mp4|mov|avi|mkv|webm|m4v)$/.test(nm);}
 function readFile(input){return new Promise(function(res){var f=input.files&&input.files[0];if(!f){res(null);return;}
   var fr=new FileReader();fr.onload=function(){res({name:f.name,type:f.type,data:fr.result});};fr.onerror=function(){res(null);};fr.readAsDataURL(f);});}
 $$('#form-chamado input[type=file]').forEach(function(inp){
   inp.addEventListener('change',function(){
     var prev=$('#'+inp.getAttribute('data-prev'));
+    var f=inp.files&&inp.files[0];
+    if(f){
+      if(!tipoArquivoOk(f)){showMsg('#c-msg','Formato não aceito em “'+esc(f.name)+'”. Envie apenas imagem, vídeo ou PDF.');inp.value='';ATT[inp.id]=null;if(prev){prev.classList.remove('on');prev.innerHTML='';}return;}
+      var lim=maxFileBytes();
+      if(f.size>lim){
+        var extra=cloudOn()?'':' Para enviar arquivos maiores, configure a nuvem (botão Nuvem) — assim o arquivo vai por link e o limite sobe para '+fmtMB(MAX_CLOUD)+'.';
+        showMsg('#c-msg','O arquivo “'+esc(f.name)+'” tem '+fmtMB(f.size)+' e ultrapassa o limite de '+fmtMB(lim)+'.'+extra);
+        inp.value='';ATT[inp.id]=null;if(prev){prev.classList.remove('on');prev.innerHTML='';}return;
+      }
+    }
     readFile(inp).then(function(obj){
       ATT[inp.id]=obj;
       if(!obj){prev.classList.remove('on');prev.innerHTML='';return;}
       var media='';
       if(/^image\//.test(obj.type))media='<img src="'+obj.data+'">';
       else if(/^video\//.test(obj.type))media='<video src="'+obj.data+'" controls></video>';
+      else if(obj.type==='application/pdf'||/\.pdf$/i.test(obj.name||''))media='<div class="fn" style="font-size:26px"><i data-lucide="file-text"></i></div>';
       prev.innerHTML=media+'<div class="fn"><i data-lucide="check-circle-2"></i> '+esc(obj.name)+'</div>';
       prev.classList.add('on');icons();
     });
@@ -981,7 +1002,7 @@ function _attExt(a){var n=(a.name||'');var e=(n.indexOf('.')>=0?n.split('.').pop
 function _attParams(anexB64,t){
   var rotulos={placa:'placa',km:'quilometragem',evid:'evidencia',bo:'bo',fa:'adicional'};
   var p={_skip:false};var total=0;(anexB64||[]).forEach(function(a){total+=((a.data||'').length);});
-  if(total>900000){p._skip=true;return p;} /* grande demais p/ anexar no EmailJS: vai como link no corpo */
+  if(total>30000){p._skip=true;return p;} /* > ~30KB: não embute no e-mail (limite de 50KB de variáveis do EmailJS). Vai como LINK no corpo (via nuvem). */
   var base=((t&&t.id)||'CHAMADO');
   (anexB64||[]).forEach(function(a){var raw=(a.data||'').split(',')[1]||'';p['anexo_'+a.key]=raw;p['anexo_'+a.key+'_nome']=base+'_'+(rotulos[a.key]||a.key)+'.'+_attExt(a);});
   return p;
