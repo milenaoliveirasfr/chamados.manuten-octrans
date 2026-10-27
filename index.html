@@ -288,9 +288,36 @@ body[data-theme="dark"] .filebox input[type=file]{color:var(--muted)}
   .submitbar .btn{width:100%}
 }
 @media(max-width:400px){.kpis{grid-template-columns:1fr}}
+/* ===== Notificações de e-mail (enviando / enviado / recebido) ===== */
+#notif-stack{position:fixed;right:16px;bottom:16px;z-index:9999;display:flex;flex-direction:column;gap:10px;max-width:360px;width:calc(100vw - 32px);max-width:min(360px,calc(100vw - 32px))}
+.ntf{background:var(--panel,#fff);border:1px solid var(--line,#e6e0d8);border-left:5px solid #C08A5E;border-radius:12px;box-shadow:0 8px 24px rgba(43,39,36,.14);padding:12px 14px;animation:ntfIn .25s ease;font-size:13px;color:var(--ink,#2B2724)}
+@keyframes ntfIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+.ntf.leaving{opacity:0;transform:translateX(16px);transition:all .3s ease}
+.ntf .ntf-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.ntf .ntf-title{font-weight:700;display:flex;align-items:center;gap:7px}
+.ntf .ntf-x{cursor:pointer;color:var(--muted,#8A8178);background:none;border:none;padding:2px;line-height:1}
+.ntf .ntf-x svg{width:15px;height:15px}
+.ntf .ntf-dest{color:var(--muted,#8A8178);font-size:12px;word-break:break-all;margin-bottom:8px}
+.ntf-steps{display:flex;align-items:center;gap:0}
+.ntf-step{display:flex;align-items:center;gap:6px;flex:1}
+.ntf-dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;background:#E6E0D8;color:#8A8178;border:2px solid #E6E0D8}
+.ntf-dot svg{width:12px;height:12px}
+.ntf-dot.active{background:#C08A5E;border-color:#C08A5E;color:#fff}
+.ntf-dot.done{background:#5C8A6B;border-color:#5C8A6B;color:#fff}
+.ntf-dot.fail{background:#B0564A;border-color:#B0564A;color:#fff}
+.ntf-dot.spin svg{animation:ntfspin 1s linear infinite}
+@keyframes ntfspin{to{transform:rotate(360deg)}}
+.ntf-line{height:2px;background:#E6E0D8;flex:1;margin:0 4px;align-self:center}
+.ntf-line.on{background:#5C8A6B}
+.ntf-lbl{font-size:10px;color:var(--muted,#8A8178);margin-top:5px;display:flex;justify-content:space-between}
+.ntf-lbl span{flex:1;text-align:center}
+.ntf-lbl span.cur{color:var(--ink,#2B2724);font-weight:700}
+.ntf-err{margin-top:7px;font-size:11px;color:#B0564A;word-break:break-word}
+@media(max-width:620px){#notif-stack{right:10px;bottom:10px;left:10px;width:auto}}
 </style>
 </head>
 <body>
+<div id="notif-stack" aria-live="polite"></div>
 <div id="crit-alert" role="alert"><span class="ca-ico"><i data-lucide="wifi-off"></i></span><span class="ca-msg" id="crit-alert-msg"></span><button id="crit-retry" type="button"><i data-lucide="refresh-cw"></i> Reconectar</button><button id="crit-close" type="button"><i data-lucide="x"></i> Dispensar</button></div>
 <button class="theme-toggle" id="themeToggle" type="button" title="Alternar tema claro/escuro"><i data-lucide="moon"></i><span>Escuro</span></button>
 <!-- ===================== LOGIN GATE ===================== -->
@@ -621,7 +648,7 @@ var SUP=null;      /* supervisor logado */
 /* =================== NUVEM (Supabase) + EMAIL (EmailJS) =================== */
 /* Config salva localmente e compartilhável por link (#cfg=...). Preencha pelo botão "Nuvem". */
 var K_CFG='ctrans_cloud_cfg_v1';
-var CLOUD=load(K_CFG,{url:'',anon:'',bucket:'anexos',table:'chamados',ejsPub:'',ejsService:'',ejsTemplate:'',webhook:'',alertEmail:''});
+var CLOUD=load(K_CFG,{url:'',anon:'',bucket:'anexos',table:'chamados',ejsPub:'',ejsService:'',ejsTemplate:'',webhook:'',alertEmail:'',bccGestor:''});
 (function(){try{var h=location.hash.match(/cfg=([^&]+)/);if(h){var c=JSON.parse(decodeURIComponent(escape(atob(h[1]))));CLOUD=Object.assign(CLOUD,c);save(K_CFG,CLOUD);}}catch(e){}})();
 var SB=null;
 function cloudOn(){return !!(CLOUD.url&&CLOUD.anon);}
@@ -873,8 +900,8 @@ function buildEmail(t){
     'Locadora: '+t.locadora,
     'Responsável pela solicitação: '+t.solic,
     'Motivo da solicitação: '+t.motivo,
-    'Situação atual: '+t.status,'',
-    'Descrição do ocorrido:',(t.desc||'—'),''];
+    'Situação atual: '+t.status,
+    'Descrição do ocorrido: '+(t.desc||'—'),''];
   var labels={placa:'Foto da placa',km:'Foto da quilometragem',evid:'Evidência/foto do problema',bo:'Boletim de ocorrência (B.O.)',fa:'Arquivo/foto adicional'};
   var an=t.anexos||{};var links=[];
   ['placa','km','evid','bo','fa'].forEach(function(k){var a=an[k];if(a&&a.data&&/^https?:\/\//.test(a.data))links.push('• '+(labels[k]||k)+': '+a.data);});
@@ -885,11 +912,70 @@ function buildEmail(t){
   return {dest:dest,subject:subject,body:body.join('\n')};
 }
 function _splitDest(dest){return dest.join(',').split(/[,;\/]/).map(function(s){return s.trim();}).filter(function(v,i,a){return v&&/.+@.+\..+/.test(v)&&a.indexOf(v)===i;});}
+/* Lista de cópias ocultas (BCC) — gestor. Não aparece para os demais destinatários. */
+function bccList(){return _splitDest([(CLOUD.bccGestor||'')]);}
 /* ---- LOG DE ENVIOS DE E-MAIL ---- */
 var K_MAILLOG='ctrans_maillog_v1';
 function mailLog(){try{return JSON.parse(localStorage.getItem(K_MAILLOG)||'[]');}catch(e){return [];}}
 function logMail(e){try{var a=mailLog();a.unshift(e);if(a.length>400)a=a.slice(0,400);localStorage.setItem(K_MAILLOG,JSON.stringify(a));}catch(_){}}
 function logClear(){try{localStorage.removeItem(K_MAILLOG);}catch(_){}}
+/* =================== TEMPLATE DE NOTIFICAÇÃO (enviando → enviado → recebido) =================== */
+/* Mostra, em tempo real, o status de cada e-mail: "Enviando" enquanto o envio está
+   em andamento, "Enviado" quando o serviço de e-mail confirma o disparo, e "Recebido"
+   quando o provedor aceita a mensagem para entrega na caixa do destinatário. Em caso
+   de erro, muda para "Falha". Atualiza automaticamente, sem recarregar a página. */
+var NOTIF={};var _notifSeq=0;
+function notifStack(){return document.getElementById('notif-stack');}
+function notifCreate(opts){
+  var id='ntf'+(++_notifSeq)+'_'+Date.now();
+  NOTIF[id]={id:id,chamado:opts.chamado||'—',dest:opts.dest||'',tipo:opts.tipo||'E-mail',status:'enviando',erro:'',tsEnviando:nowISO(),tsEnviado:'',tsRecebido:''};
+  notifRenderOne(id);
+  return id;
+}
+function notifSent(id){var n=NOTIF[id];if(!n)return;n.status='enviado';n.tsEnviado=nowISO();notifRenderOne(id);
+  /* O sucesso do EmailJS significa que o provedor ACEITOU a mensagem para entrega na
+     caixa do destinatário. Marcamos "Recebido" automaticamente logo em seguida. */
+  setTimeout(function(){notifReceived(id);},1400);
+}
+function notifReceived(id){var n=NOTIF[id];if(!n||n.status==='falha')return;n.status='recebido';n.tsRecebido=nowISO();notifRenderOne(id);
+  setTimeout(function(){notifDismiss(id);},6000);
+}
+function notifFail(id,erro){var n=NOTIF[id];if(!n)return;n.status='falha';n.erro=erro||'';notifRenderOne(id);}
+function notifDismiss(id){var el=document.getElementById(id);if(el){el.classList.add('leaving');setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},320);}delete NOTIF[id];}
+function _stepHTML(n){
+  var s=n.status;
+  var d1='done',d2,d3,l1='on',l2;
+  if(s==='enviando'){d1='active spin';d2='';d3='';l1='';l2='';}
+  else if(s==='enviado'){d1='done';d2='active spin';d3='';l1='on';l2='';}
+  else if(s==='recebido'){d1='done';d2='done';d3='done';l1='on';l2='on';}
+  else if(s==='falha'){d1='fail';d2='';d3='';l1='';l2='';}
+  var ic1=(s==='enviando')?'loader-2':(s==='falha'?'x':'check');
+  var ic2=(s==='enviado')?'loader-2':((s==='recebido')?'check':'send');
+  var ic3=(s==='recebido')?'check':'inbox';
+  return '<div class="ntf-steps">'+
+    '<div class="ntf-step"><span class="ntf-dot '+d1+'"><i data-lucide="'+ic1+'"></i></span></div>'+
+    '<div class="ntf-line '+l1+'"></div>'+
+    '<div class="ntf-step"><span class="ntf-dot '+(d2||'')+'"><i data-lucide="'+ic2+'"></i></span></div>'+
+    '<div class="ntf-line '+(l2||'')+'"></div>'+
+    '<div class="ntf-step"><span class="ntf-dot '+(d3||'')+'"><i data-lucide="'+ic3+'"></i></span></div>'+
+    '</div>'+
+    '<div class="ntf-lbl"><span class="'+(s==='enviando'?'cur':'')+'">Enviando</span><span class="'+(s==='enviado'?'cur':'')+'">Enviado</span><span class="'+(s==='recebido'?'cur':'')+'">Recebido</span></div>';
+}
+function _notifBorder(s){return s==='falha'?'#B0564A':(s==='recebido'?'#5C8A6B':(s==='enviado'?'#5C8A6B':'#C08A5E'));}
+function _notifTitle(s){return s==='falha'?'Falha no envio':(s==='recebido'?'E-mail recebido':(s==='enviado'?'E-mail enviado':'Enviando e-mail…'));}
+function notifRenderOne(id){
+  var n=NOTIF[id];var st=notifStack();if(!n||!st)return;
+  var el=document.getElementById(id);
+  if(!el){el=document.createElement('div');el.className='ntf';el.id=id;st.appendChild(el);}
+  el.style.borderLeftColor=_notifBorder(n.status);
+  var head=(n.status==='falha'?'alert-triangle':(n.status==='recebido'?'mail-check':(n.status==='enviado'?'mail':'send')));
+  el.innerHTML='<div class="ntf-top"><span class="ntf-title"><i data-lucide="'+head+'"></i> '+esc(_notifTitle(n.status))+'</span>'+
+    '<button class="ntf-x" type="button" title="Fechar" onclick="notifDismiss(\''+id+'\')"><i data-lucide="x"></i></button></div>'+
+    '<div class="ntf-dest">'+esc(n.tipo)+' · Chamado '+esc(n.chamado)+'<br>Para: '+esc(n.dest)+'</div>'+
+    _stepHTML(n)+
+    (n.status==='falha'&&n.erro?('<div class="ntf-err">'+esc(n.erro)+'</div>'):'');
+  icons();
+}
 function _errTxt(err){try{return (err&&(err.text||err.message))||(typeof err==='string'?err:JSON.stringify(err))||'erro desconhecido';}catch(_){return 'erro desconhecido';}}
 function _attExt(a){var n=(a.name||'');var e=(n.indexOf('.')>=0?n.split('.').pop():'').toLowerCase();if(e)return e;var ty=(a.type||'');if(/jpeg/.test(ty))return 'jpg';if(/png/.test(ty))return 'png';if(/pdf/.test(ty))return 'pdf';if(/mp4/.test(ty))return 'mp4';return 'dat';}
 function _attParams(anexB64,t){
@@ -908,13 +994,26 @@ function sendEmail(t,anexB64){var m=buildEmail(t);
       if(!alvos.length){logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:'(nenhum destinatário válido)',status:'FALHA',erro:'lista de e-mails vazia'});mailtoFallback(m);return;}
       var rt=t.email||EMAIL_CTRANS;
       var att=_attParams(anexB64,t);var skip=att._skip;delete att._skip;
+      var bccs=bccList();var bccStr=bccs.join(',');
       alvos.forEach(function(addr){
         var params={to_email:addr,email:addr,recipient:addr,reply_to:rt,from_email:rt,from_name:(t.solic||'Solicitante'),subject:m.subject,message:m.body,
+          bcc:bccStr,bcc_email:bccStr,
           chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic};
         if(!skip){for(var kk in att){if(att.hasOwnProperty(kk))params[kk]=att[kk];}}
+        var nid=notifCreate({chamado:t.id,dest:addr,tipo:'Confirmação de abertura'});
         emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,params).then(
-          function(){logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:addr,status:'OK',erro:(skip?'imagens enviadas como link no corpo (anexos muito grandes)':'')});},
-          function(err){logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:addr,status:'FALHA',erro:_errTxt(err)});});
+          function(){notifSent(nid);logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:addr,status:'OK',erro:(skip?'imagens enviadas como link no corpo (anexos muito grandes)':'')});},
+          function(err){notifFail(nid,_errTxt(err));logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:addr,status:'FALHA',erro:_errTxt(err)});});
+      });
+      /* Cópia oculta (BCC) para o gestor — enviada individualmente, invisível aos demais */
+      bccs.forEach(function(addr){
+        var pb={to_email:addr,email:addr,recipient:addr,reply_to:rt,from_email:rt,from_name:(t.solic||'Solicitante'),subject:m.subject,message:m.body,
+          chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic};
+        if(!skip){for(var kk in att){if(att.hasOwnProperty(kk))pb[kk]=att[kk];}}
+        var nidB=notifCreate({chamado:t.id,dest:addr,tipo:'Cópia oculta (gestor)'});
+        emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,pb).then(
+          function(){notifSent(nidB);logMail({ts:nowISO(),tipo:'Abertura (BCC gestor)',chamado:t.id,dest:addr,status:'OK',erro:''});},
+          function(err){notifFail(nidB,_errTxt(err));logMail({ts:nowISO(),tipo:'Abertura (BCC gestor)',chamado:t.id,dest:addr,status:'FALHA',erro:_errTxt(err)});});
       });
       return;
     }catch(e){logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:'(exceção)',status:'FALHA',erro:_errTxt(e)});}
@@ -936,7 +1035,7 @@ function buildStatusEmail(t){
   return {dest:dest,subject:subject,body:body.join('\n')};
 }
 function sendStatusEmail(t){var m=buildStatusEmail(t);
-  if(emailAuto()&&window.emailjs){try{emailjs.init(CLOUD.ejsPub);var alvos=_splitDest(m.dest);if(!alvos.length){logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:'(nenhum destinatário válido)',status:'FALHA',erro:'lista de e-mails vazia'});return false;}alvos.forEach(function(addr){emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,{to_email:addr,email:addr,recipient:addr,reply_to:EMAIL_CTRANS,subject:m.subject,message:m.body,chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic}).then(function(){logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:addr,status:'OK',erro:''});},function(err){logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:addr,status:'FALHA',erro:_errTxt(err)});});});return true;}catch(e){logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:'(exceção)',status:'FALHA',erro:_errTxt(e)});}}
+  if(emailAuto()&&window.emailjs){try{emailjs.init(CLOUD.ejsPub);var alvos=_splitDest(m.dest);if(!alvos.length){logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:'(nenhum destinatário válido)',status:'FALHA',erro:'lista de e-mails vazia'});return false;}var bccs=bccList();var bccStr=bccs.join(',');alvos.forEach(function(addr){var nid=notifCreate({chamado:t.id,dest:addr,tipo:'Atualização de situação'});emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,{to_email:addr,email:addr,recipient:addr,reply_to:EMAIL_CTRANS,subject:m.subject,message:m.body,bcc:bccStr,bcc_email:bccStr,chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic}).then(function(){notifSent(nid);logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:addr,status:'OK',erro:''});},function(err){notifFail(nid,_errTxt(err));logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:addr,status:'FALHA',erro:_errTxt(err)});});});bccs.forEach(function(addr){var nidB=notifCreate({chamado:t.id,dest:addr,tipo:'Cópia oculta (gestor)'});emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,{to_email:addr,email:addr,recipient:addr,reply_to:EMAIL_CTRANS,subject:m.subject,message:m.body,chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic}).then(function(){notifSent(nidB);logMail({ts:nowISO(),tipo:'Status (BCC gestor)',chamado:t.id,dest:addr,status:'OK',erro:''});},function(err){notifFail(nidB,_errTxt(err));logMail({ts:nowISO(),tipo:'Status (BCC gestor)',chamado:t.id,dest:addr,status:'FALHA',erro:_errTxt(err)});});});return true;}catch(e){logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:'(exceção)',status:'FALHA',erro:_errTxt(e)});}}
   return false;
 }
 /* =================== ABRIR CHAMADO =================== */
@@ -1413,6 +1512,34 @@ function testarTodos(){
   });
   alert('Teste disparado para '+alvos.length+' destinatário(s). Acompanhe o resultado (OK/FALHA) no log abaixo.');
 }
+function testarReal(){
+  if(!(emailAuto()&&window.emailjs)){alert('Configure o EmailJS (botão Nuvem) antes de testar o envio.');return;}
+  /* Usa o último chamado real, se houver; senão, monta um exemplo representativo. */
+  var base=(TICKETS&&TICKETS.length)?TICKETS[0]:null;
+  var t=base?Object.assign({},base):{id:genId(),criado:nowISO(),placa:'TESTE-0000',modelo:'Exemplo/Modelo',unidade:'UNITRA - Unidade de Transporte',km:'00000',locadora:(Object.keys(LOCADORAS)[0]||'Locadora exemplo'),solic:'Solicitante de teste',email:'',motivo:'Teste de envio',status:'Aberto',desc:'Mensagem de teste com os dados reais do sistema.',anexos:{}};
+  var m=buildEmail(t);
+  var suger=[(t.email||''),EMAIL_CTRANS,(CLOUD.alertEmail||'')].filter(function(v,i,a){return v&&a.indexOf(v)===i;}).join(', ');
+  var entrada=prompt('Testar o envio da MENSAGEM REAL de confirmação (chamado '+t.id+').\nPara quais destinatários? Separe por vírgula.\n(O conteúdo enviado é exatamente o corpo do e-mail de confirmação.)',suger||EMAIL_CTRANS);
+  if(entrada===null)return;
+  var alvos=_splitDest([entrada]);
+  if(!alvos.length){alert('Nenhum e-mail válido informado.');return;}
+  try{emailjs.init(CLOUD.ejsPub);}catch(e){}
+  var rt=t.email||EMAIL_CTRANS;var bccs=bccList();var bccStr=bccs.join(',');
+  alvos.forEach(function(addr){
+    var nid=notifCreate({chamado:t.id,dest:addr,tipo:'Teste (dados reais)'});
+    emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,{to_email:addr,email:addr,recipient:addr,reply_to:rt,from_email:rt,from_name:(t.solic||'CTRANS'),subject:'[TESTE] '+m.subject,message:m.body,bcc:bccStr,bcc_email:bccStr,chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic}).then(
+      function(){notifSent(nid);logMail({ts:nowISO(),tipo:'Teste-Real',chamado:t.id,dest:addr,status:'OK',erro:''});mailLogModal();},
+      function(err){notifFail(nid,_errTxt(err));logMail({ts:nowISO(),tipo:'Teste-Real',chamado:t.id,dest:addr,status:'FALHA',erro:_errTxt(err)});mailLogModal();});
+  });
+  bccs.forEach(function(addr){
+    var nidB=notifCreate({chamado:t.id,dest:addr,tipo:'Teste — cópia oculta (gestor)'});
+    emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,{to_email:addr,email:addr,recipient:addr,reply_to:rt,from_email:rt,from_name:(t.solic||'CTRANS'),subject:'[TESTE] '+m.subject,message:m.body,chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic}).then(
+      function(){notifSent(nidB);logMail({ts:nowISO(),tipo:'Teste-Real (BCC gestor)',chamado:t.id,dest:addr,status:'OK',erro:''});mailLogModal();},
+      function(err){notifFail(nidB,_errTxt(err));logMail({ts:nowISO(),tipo:'Teste-Real (BCC gestor)',chamado:t.id,dest:addr,status:'FALHA',erro:_errTxt(err)});mailLogModal();});
+  });
+  var extra=bccs.length?(' + '+bccs.length+' cópia(s) oculta(s)'):'';
+  alert('Teste com dados reais disparado para '+alvos.length+' destinatário(s)'+extra+'. Veja o resultado no log.');
+}
 function mailLogModal(){
   var a=mailLog();
   var okN=a.filter(function(e){return e.status==='OK';}).length;
@@ -1422,11 +1549,12 @@ function mailLogModal(){
     var cor=e.status==='OK'?'#5C8A6B':(e.status==='FALHA'?'#B0564A':'#C08A5E');
     return '<tr><td style="padding:6px;white-space:nowrap">'+esc(fmtDate(e.ts))+'</td><td style="padding:6px">'+esc(e.tipo||'')+'</td><td style="padding:6px">'+esc(e.chamado||'')+'</td><td style="padding:6px">'+esc(e.dest||'')+'</td><td style="padding:6px;color:'+cor+';font-weight:700">'+esc(e.status)+'</td><td style="padding:6px;font-size:11px;color:#8A8178">'+esc(e.erro||'')+'</td></tr>';
   }).join(''):'<tr><td colspan="6" style="text-align:center;color:#8A8178;padding:14px">Nenhum envio registrado ainda.</td></tr>';
-  var html='<h3 style="margin:0 0 6px">Log de envios de e-mail</h3>'+
-    '<p style="color:var(--muted);font-size:13px;margin:0 0 10px">Registro dos disparos de e-mail (sucessos e falhas), por destinatário. Total: <b>'+a.length+'</b> · <span style="color:#5C8A6B;font-weight:700">'+okN+' OK</span> · <span style="color:#B0564A;font-weight:700">'+failN+' falha(s)</span>'+(fbN?(' · <span style="color:#C08A5E;font-weight:700">'+fbN+' fallback</span>'):'')+'</p>'+
+  var html='<h3 style="margin:0 0 6px">Log de verificação de envios de e-mail</h3>'+
+    '<p style="color:var(--muted);font-size:13px;margin:0 0 10px">Registro de verificação de cada disparo de e-mail (sucessos, falhas e cópias ocultas), por destinatário. Total: <b>'+a.length+'</b> · <span style="color:#5C8A6B;font-weight:700">'+okN+' OK</span> · <span style="color:#B0564A;font-weight:700">'+failN+' falha(s)</span>'+(fbN?(' · <span style="color:#C08A5E;font-weight:700">'+fbN+' fallback</span>'):'')+'</p>'+
     '<div style="max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:7px">Data/hora</th><th style="text-align:left;padding:7px">Tipo</th><th style="text-align:left;padding:7px">Chamado</th><th style="text-align:left;padding:7px">Destinatário</th><th style="text-align:left;padding:7px">Status</th><th style="text-align:left;padding:7px">Erro</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">'+
     '<button class="btn ghost" id="ml-csv"><i data-lucide="download"></i> Exportar CSV</button>'+
+    '<button class="btn" id="ml-testreal"><i data-lucide="mail-check"></i> Testar com dados reais</button>'+
     '<button class="btn" id="ml-testall"><i data-lucide="send"></i> Testar envio para todos</button>'+
     '<button class="btn ghost" id="ml-sim"><i data-lucide="flask-conical"></i> Simular envio (teste)</button>'+
     '<button class="btn ghost" id="ml-clear"><i data-lucide="trash-2"></i> Limpar log</button>'+
@@ -1435,6 +1563,7 @@ function mailLogModal(){
   var cc=$('#ml-clear');if(cc)cc.addEventListener('click',function(){if(confirm('Limpar todo o log de envios?')){logClear();mailLogModal();}});
   var sm=$('#ml-sim');if(sm)sm.addEventListener('click',simulaEnvioTeste);
   var ta=$('#ml-testall');if(ta)ta.addEventListener('click',testarTodos);
+  var tr=$('#ml-testreal');if(tr)tr.addEventListener('click',testarReal);
   var cs=$('#ml-csv');if(cs)cs.addEventListener('click',function(){
     var lines=[['Data/hora','Tipo','Chamado','Destinatario','Status','Erro'].join(';')];
     mailLog().forEach(function(e){lines.push([fmtDate(e.ts),e.tipo||'',e.chamado||'',e.dest||'',e.status,(e.erro||'').replace(/[;\n]/g,' ')].map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}).join(';'));});
@@ -1457,6 +1586,7 @@ function cloudModal(){
     fld('cf-ejstpl','EmailJS Template ID',c.ejsTemplate,'template_xxxx')+
     '<div class="fg full"><label>Webhook de alerta (Discord ou Slack) — opcional</label><input type="text" id="cf-webhook" value="'+esc(c.webhook||'')+'" placeholder="https://discord.com/api/webhooks/... ou https://hooks.slack.com/services/..."></div>'+
     '<div class="fg full"><label>E-mail de alerta adicional (Gmail) — opcional</label><input type="text" id="cf-alertmail" value="'+esc(c.alertEmail||'')+'" placeholder="ex.: transportectrans@gmail.com (CTRANS já recebe automaticamente)"></div>'+
+    '<div class="fg full"><label>Cópia oculta (BCC) do gestor — opcional</label><input type="text" id="cf-bccgestor" value="'+esc(c.bccGestor||'')+'" placeholder="ex.: gestor@dominio.com (recebe cópia oculta de toda confirmação; separe por vírgula se mais de um)"></div>'+
     '</div>'+
     '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">'+
     '<button class="btn" id="cf-save"><i data-lucide="save"></i> Salvar e conectar</button>'+
@@ -1466,7 +1596,7 @@ function cloudModal(){
     '</div><div id="cf-out" style="margin-top:12px;font-size:12px;color:var(--muted);word-break:break-all"></div>';
   openModal(html);
   $('#cf-save').addEventListener('click',function(){
-    CLOUD={url:$('#cf-url').value.trim(),anon:$('#cf-anon').value.trim(),bucket:($('#cf-bucket').value.trim()||'anexos'),table:($('#cf-table').value.trim()||'chamados'),ejsPub:$('#cf-ejspub').value.trim(),ejsService:$('#cf-ejssvc').value.trim(),ejsTemplate:$('#cf-ejstpl').value.trim(),webhook:$('#cf-webhook').value.trim(),alertEmail:$('#cf-alertmail').value.trim()};
+    CLOUD={url:$('#cf-url').value.trim(),anon:$('#cf-anon').value.trim(),bucket:($('#cf-bucket').value.trim()||'anexos'),table:($('#cf-table').value.trim()||'chamados'),ejsPub:$('#cf-ejspub').value.trim(),ejsService:$('#cf-ejssvc').value.trim(),ejsTemplate:$('#cf-ejstpl').value.trim(),webhook:$('#cf-webhook').value.trim(),alertEmail:$('#cf-alertmail').value.trim(),bccGestor:$('#cf-bccgestor').value.trim()};
     save(K_CFG,CLOUD);initSB();setCloudBadge();cloudSubscribe();
     cloudLoadAll(function(){try{mRender();}catch(e){}try{cRender();}catch(e){}});
     $('#cf-out').innerHTML=cloudOn()?'<span style="color:var(--ok,#5C8A6B)">Conectado à nuvem Supabase.</span>':'Configuração salva (modo local).';
