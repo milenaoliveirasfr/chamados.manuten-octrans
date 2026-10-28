@@ -117,16 +117,18 @@ h1,h2,h3{font-family:'Fraunces',serif;font-weight:600}
 .filebox .prev .fn svg{width:13px;height:13px}
 .submitbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
 /* KPIs */
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
-.kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;border-left:4px solid var(--line)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
+.kpi{display:flex;align-items:center;gap:13px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;border-left:4px solid var(--line)}
 .kpi.k-open{border-left-color:var(--info)}
 .kpi.k-prog{border-left-color:var(--warn)}
 .kpi.k-done{border-left-color:var(--ok)}
 .kpi.k-fb{border-left-color:var(--accent)}
-.kpi .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:7px}
-.kpi .lab svg{width:15px;height:15px;color:var(--accent)}
-.kpi .val{font-family:'Fraunces',serif;font-weight:600;font-size:27px;color:var(--ink);margin-top:9px;line-height:1}
-.kpi .sub{font-size:11.5px;color:var(--muted);margin-top:6px}
+.kpi .kpi-ic{flex:0 0 auto;width:42px;height:42px;border-radius:12px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center}
+.kpi .kpi-ic svg{width:20px;height:20px;color:var(--accent)}
+.kpi .kpi-body{display:flex;flex-direction:column;min-width:0;flex:1}
+.kpi .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.kpi .val{font-family:'Fraunces',serif;font-weight:600;font-size:26px;color:var(--ink);margin-top:5px;line-height:1}
+.kpi .sub{font-size:11.5px;color:var(--muted);margin-top:5px}
 .grid{display:grid;gap:16px}
 .g2{grid-template-columns:repeat(2,1fr)}
 .chart{width:100%;height:300px}
@@ -198,8 +200,8 @@ table.tbl tbody tr:hover{background:var(--bg)}
 .liveupd{font-size:12px;color:var(--muted)}
 .livesrc{font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--line);padding:3px 9px;border-radius:999px}
 .livebar #live-refresh{margin-left:auto}
-.statusboard{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-@media(max-width:1000px){.statusboard{grid-template-columns:repeat(2,1fr)}}
+.statusboard{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:900px){.statusboard{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:620px){.statusboard{grid-template-columns:1fr}}
 .stcol{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;min-height:120px}
 .stcol .sth{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;padding-bottom:9px;border-bottom:2px solid var(--line)}
@@ -496,6 +498,15 @@ body[data-theme="dark"] .filebox input[type=file]{color:var(--muted)}
   <div class="page" id="mpage-gestao">
     <div class="notice"><i data-lucide="info"></i><span>Painel atualizado automaticamente a cada chamado aberto. Mostra os chamados da sua unidade e o andamento informado pela CTRANS.</span></div>
     <div style="margin-bottom:12px"><button class="btn ghost sm" id="m-pdf"><i data-lucide="file-down"></i> Relatório executivo mensal (PDF)</button></div>
+    <div class="filterbar" id="m-filterbar">
+      <div class="fb-head"><i data-lucide="calendar-range"></i> Filtrar por período de abertura</div>
+      <div class="fg"><label>De</label><input type="date" id="m-f-ini"></div>
+      <div class="fg"><label>Até</label><input type="date" id="m-f-fim"></div>
+      <div class="fb-actions"><button class="btn sm" id="m-f-aplicar"><i data-lucide="filter"></i> Filtrar</button>
+      <button class="btn ghost sm" id="m-f-limpar"><i data-lucide="x"></i> Limpar</button>
+      <span class="fb-spacer"></span>
+      <span id="m-f-info" style="font-size:12px;color:var(--muted);align-self:center"></span></div>
+    </div>
     <div class="kpis" id="m-kpis"></div>
     <div class="grid g2">
       <div class="card"><h3><i data-lucide="pie-chart"></i> Chamados por situação</h3><div class="chart" id="m-ch-status"></div></div>
@@ -1185,8 +1196,10 @@ function bindThumbs(root){$$('.thumb',root).forEach(function(el){el.addEventList
 function anexosCell(t){var a=t.anexos||{};var parts=[];['placa','evid','km','bo','fa'].forEach(function(k){var v=a[k];if(Array.isArray(v)){v.forEach(function(x){if(x)parts.push(mediaHtml(x));});}else if(v)parts.push(mediaHtml(v));});
   return parts.length?('<div style="display:flex;gap:5px;flex-wrap:wrap">'+parts.join('')+'</div>'):'<span style="color:#8A8178">sem anexos</span>';}
 /* =================== RENDER MANUTENÇÃO (página 2) =================== */
-function kpiCard(cls,icon,lab,val,sub){return '<div class="kpi '+cls+'"><div class="lab"><i data-lucide="'+icon+'"></i> '+lab+'</div><div class="val">'+val+'</div><div class="sub">'+sub+'</div></div>';}
-function mData(){if(!CURRENT)return [];return TICKETS.filter(function(t){return t.userLogin===CURRENT.user;});}
+function kpiCard(cls,icon,lab,val,sub){return '<div class="kpi '+cls+'"><div class="kpi-ic"><i data-lucide="'+icon+'"></i></div><div class="kpi-body"><div class="lab">'+lab+'</div><div class="val">'+val+'</div><div class="sub">'+sub+'</div></div></div>';}
+var M_FILTER={ini:'',fim:''};
+function _fday(s){if(!s)return '';var p=String(s).split('-');return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):s;}
+function mData(){if(!CURRENT)return [];return TICKETS.filter(function(t){return t.userLogin===CURRENT.user&&inRange(t.criado,M_FILTER.ini,M_FILTER.fim);});}
 function mRender(){
   var data=mData();
   var ab=data.filter(function(t){return t.status==='Aberto';}).length;
@@ -1204,7 +1217,9 @@ function mRender(){
   $('#m-rank').innerHTML=rk.length?rk.map(function(p,i){return '<li data-tp="placa" data-v="'+esc(p[0])+'" title="Duplo clique: detalhes do veículo"><span class="pos">'+(i+1)+'</span><span class="nm">'+esc(p[0])+'</span><span class="ct">'+p[1]+' chamado(s)</span></li>';}).join(''):'<li><span class="nm" style="color:#8A8178">Nenhum chamado ainda.</span></li>';
   var th='<thead><tr><th>Chamado</th><th>Abertura</th><th>Placa</th><th>Modelo</th><th>Motivo</th><th>Situação</th><th>Atualizado em</th><th>Anexos</th></tr></thead>';
   var tb='<tbody>'+(data.length?data.map(function(t){return '<tr><td>'+esc(t.id)+'</td><td>'+fmtDate(t.criado)+'</td><td data-tp="placa" data-v="'+esc(t.placa)+'" title="Duplo clique: detalhes do veículo"><b>'+esc(t.placa)+'</b></td><td>'+esc(t.modelo)+'</td><td>'+esc(t.motivo)+'</td><td><span class="badge '+STBADGE[t.status]+'">'+esc(t.status)+'</span></td><td>'+(t.atualizado?fmtDate(t.atualizado):'—')+'</td><td>'+anexosCell(t)+'</td></tr>';}).join(''):'<tr><td colspan="8" style="text-align:center;color:#8A8178">Nenhum chamado registrado.</td></tr>')+'</tbody>';
-  $('#m-tbl').innerHTML=th+tb;bindThumbs($('#m-tbl'));icons();
+  $('#m-tbl').innerHTML=th+tb;bindThumbs($('#m-tbl'));
+  var inf=$('#m-f-info');if(inf)inf.textContent=(M_FILTER.ini||M_FILTER.fim)?('Período: '+(M_FILTER.ini?_fday(M_FILTER.ini):'início')+' até '+(M_FILTER.fim?_fday(M_FILTER.fim):'hoje')+' · '+data.length+' chamado(s)'):(data.length+' chamado(s) no total');
+  icons();
 }
 /* =================== RENDER CTRANS =================== */
 function cRender(){cRenderCharts();cRenderStatus();cRenderTable();}
@@ -1217,11 +1232,10 @@ function cRenderStatus(){
   var fb=data.filter(function(t){return t.status==='Com Feedback';});
   var el=document.getElementById('live-kpis');
   if(el)el.innerHTML=
-    kpiCard('','hash','Chamados ativos',ab.length+pr.length,'Aberto + Em andamento')+
+    kpiCard('','hash','Chamados ativos',ab.length+pr.length,'Aberto + em atendimento')+
     kpiCard('','folder-open','Aguardando',ab.length,'Ainda não iniciados')+
-    kpiCard('','loader','Em atendimento',pr.length,'Sendo tratados')+
     kpiCard('','check-circle-2','Concluídos',rs.length+fb.length,'Resolvido + feedback');
-  var cols=[['Aberto','c-open',ab],['Em Andamento','c-prog',pr],['Resolvido','c-done',rs],['Com Feedback','c-fb',fb]];
+  var cols=[['Aberto','c-open',ab],['Resolvido','c-done',rs],['Com Feedback','c-fb',fb]];
   var board=document.getElementById('live-board');if(!board)return;
   board.innerHTML=cols.map(function(col){
     var nome=col[0],cls=col[1],arr=col[2].slice().sort(function(a,b){return new Date(b.criado)-new Date(a.criado);});
@@ -1245,7 +1259,6 @@ function cRenderCharts(){
   $('#c-kpis').innerHTML=
     kpiCard('','hash','Total de chamados',data.length,'Todas as unidades')+
     kpiCard('k-open','folder-open','Abertos',ab,'Aguardando')+
-    kpiCard('k-prog','loader','Em andamento',pr,'Em atendimento')+
     kpiCard('k-done','check-circle-2','Resolvidos',rs,'Concluídos')+
     kpiCard('k-fb','message-circle','Com feedback',fb,'Retorno dado');
   donut('c-ch-status',_stNoProg(countBy(data,function(t){return t.status;})),STCOLOR);
@@ -1767,6 +1780,8 @@ function gerarPDF(ctx){
   doc.save('Relatorio_Executivo_Chamados_'+now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'.pdf');
 }
 var mp=$('#m-pdf');if(mp)mp.addEventListener('click',function(){gerarPDF('manut');});
+var mfa=$('#m-f-aplicar');if(mfa)mfa.addEventListener('click',function(){M_FILTER.ini=($('#m-f-ini').value||'');M_FILTER.fim=($('#m-f-fim').value||'');mRender();});
+var mfl=$('#m-f-limpar');if(mfl)mfl.addEventListener('click',function(){M_FILTER.ini='';M_FILTER.fim='';var i=$('#m-f-ini');if(i)i.value='';var f=$('#m-f-fim');if(f)f.value='';mRender();});
 var cp=$('#c-pdf');if(cp)cp.addEventListener('click',function(){gerarPDF('ctrans');});
 /* ===== atualização ao vivo do mural de status ===== */
 var lr=$('#live-refresh');if(lr)lr.addEventListener('click',function(){cloudLoadAll(function(){cRenderStatus();icons();});});
