@@ -343,11 +343,11 @@ body[data-theme="dark"] .filebox input[type=file]{color:var(--muted)}
       <div class="ltabs">
         <button class="active" data-mt="login">Entrar</button>
         <button data-mt="reg">Criar usuário</button>
+        <button data-mt="forgot">Recuperar senha</button>
       </div>
       <form class="lform on" id="form-mlogin" autocomplete="off">
         <div class="fg"><label>Usuário</label><input type="text" id="ml-user" required></div>
         <div class="fg"><label>Senha</label><input type="password" id="ml-pass" required></div>
-        <div class="fg"><label>Código de acesso</label><input type="password" id="ml-cod" required placeholder="••••••"></div>
         <div class="msg" id="ml-msg"></div>
         <button class="btn" type="submit"><i data-lucide="log-in"></i> Entrar</button>
       </form>
@@ -358,17 +358,24 @@ body[data-theme="dark"] .filebox input[type=file]{color:var(--muted)}
         <div class="fg"><label>Nome completo</label><input type="text" id="mr-nome" required></div>
         <div class="fg"><label>Usuário</label><input type="text" id="mr-user" required></div>
         <div class="fg"><label>Senha</label><input type="password" id="mr-pass" required></div>
-        <div class="fg"><label>Código de acesso</label><input type="password" id="mr-cod" required placeholder="Crie um código (não fica visível)"></div>
         <div class="fg"><label>E-mail</label><input type="email" id="mr-email" required></div>
         <div class="msg" id="mr-msg"></div>
         <button class="btn" type="submit"><i data-lucide="user-plus"></i> Criar usuário</button>
+      </form>
+      <form class="lform" id="form-mforgot" autocomplete="off">
+        <div class="fg"><label>Usuário</label><input type="text" id="mf-user" required></div>
+        <div class="fg"><label>E-mail cadastrado</label><input type="email" id="mf-email" required></div>
+        <div class="fg"><label>Nova senha</label><input type="password" id="mf-pass1" required></div>
+        <div class="fg"><label>Confirmar nova senha</label><input type="password" id="mf-pass2" required></div>
+        <div class="msg" id="mf-msg"></div>
+        <button class="btn" type="submit"><i data-lucide="key-round"></i> Redefinir senha</button>
       </form>
       <button class="back" data-back><i data-lucide="arrow-left"></i> Voltar à escolha de acesso</button>
     </div>
     <div class="panel" id="panel-ctrans">
       <div class="eyebrow" style="margin-bottom:8px"><span></span> Acesso CTRANS · Supervisão <span></span></div>
       <form class="lform on" id="form-clogin" autocomplete="off">
-        <div class="fg"><label>Usuário</label><input type="text" id="cl-user" required placeholder="Supervisor1_manutenção"></div>
+        <div class="fg"><label>Usuário</label><input type="text" id="cl-user" required></div>
         <div class="fg"><label>Senha</label><input type="password" id="cl-pass" required></div>
         <div class="fg"><label>Código de acesso</label><input type="password" id="cl-cod" required placeholder="••••••"></div>
         <div class="msg" id="cl-msg"></div>
@@ -457,8 +464,8 @@ body[data-theme="dark"] .filebox input[type=file]{color:var(--muted)}
           </div>
           <div class="filebox">
             <div class="fl-h"><i data-lucide="file-text"></i> Boletim de Ocorrência</div>
-            <div class="fl-d">Anexar o Boletim de Ocorrência caso haja a necessidade.</div>
-            <input type="file" id="f-bo" accept="image/*,video/*,.pdf" data-prev="p-bo">
+            <div class="fl-d">Anexar o Boletim de Ocorrência caso haja a necessidade (até 5 arquivos).</div>
+            <input type="file" id="f-bo" accept="image/*,video/*,.pdf" data-prev="p-bo" multiple>
             <div class="prev" id="p-bo"></div>
           </div>
           <div class="filebox">
@@ -701,6 +708,7 @@ function uploadAtt(a){ /* a={name,type,data(dataURL)} -> retorna {name,type,data
     }catch(e){logSbErr('upload anexo «'+(a&&a.name)+'»',e);res(a);}
   });
 }
+function uploadAny(a){if(Array.isArray(a))return Promise.all(a.map(uploadAtt)).then(function(r){return r.filter(Boolean);});return uploadAtt(a);}
 function cloudInsert(t){if(!SB)return;try{SB.from(CLOUD.table).insert([{id:t.id,data:t}]).then(function(r){if(r&&r.error)sbFail('inserir chamado',r.error,t.id);else sbOk();}).catch(function(e){sbFail('inserir chamado',e,t.id);});}catch(e){sbFail('inserir chamado',e,t.id);}}
 function cloudUpdate(t){if(!SB)return;try{SB.from(CLOUD.table).update({data:t}).eq('id',t.id).then(function(r){if(r&&r.error)sbFail('atualizar chamado',r.error,t.id);else sbOk();}).catch(function(e){sbFail('atualizar chamado',e,t.id);});}catch(e){sbFail('atualizar chamado',e,t.id);}}
 function cloudDelete(id){if(!SB)return;try{SB.from(CLOUD.table).delete().eq('id',id).then(function(r){if(r&&r.error)sbFail('excluir chamado',r.error,id);else sbOk();}).catch(function(e){sbFail('excluir chamado',e,id);});}catch(e){sbFail('excluir chamado',e,id);}}
@@ -755,6 +763,7 @@ $$('.ltabs button').forEach(function(b){b.addEventListener('click',function(){
   var t=b.getAttribute('data-mt');
   $('#form-mlogin').classList.toggle('on',t==='login');
   $('#form-mreg').classList.toggle('on',t==='reg');
+  $('#form-mforgot').classList.toggle('on',t==='forgot');
 });});
 /* popular selects de cadastro/chamado */
 function refillSelects(){
@@ -799,20 +808,33 @@ $('#al-save').addEventListener('click',function(){
 /* ===== cadastro de usuário MANUTENÇÃO ===== */
 $('#form-mreg').addEventListener('submit',function(e){e.preventDefault();
   var unidade=resolveField('mr-unidade','mr-unidade-new','uni');
-  var u={unidade:unidade,nome:$('#mr-nome').value.trim(),user:$('#mr-user').value.trim(),pass:$('#mr-pass').value,cod:($('#mr-cod').value||'').trim(),email:$('#mr-email').value.trim()};
+  var u={unidade:unidade,nome:$('#mr-nome').value.trim(),user:$('#mr-user').value.trim(),pass:$('#mr-pass').value,email:$('#mr-email').value.trim()};
   if(!u.unidade){showMsg('#mr-msg','Selecione a unidade (ou digite em “Outros”).');return;}
-  if(!u.cod){showMsg('#mr-msg','Crie um código de acesso.');return;}
+  if(!u.user){showMsg('#mr-msg','Informe um usuário.');return;}
+  if(!u.email){showMsg('#mr-msg','Informe um e-mail.');return;}
   if(USERS.some(function(x){return x.user.toLowerCase()===u.user.toLowerCase();})){showMsg('#mr-msg','Já existe um usuário com esse login.');return;}
+  if(USERS.some(function(x){return (x.email||'').toLowerCase()===u.email.toLowerCase();})){showMsg('#mr-msg','Já existe um usuário com esse e-mail.');return;}
   USERS.push(u);persistUsers();refillSelects();
-  showMsg('#mr-msg','Usuário criado com sucesso! Use a aba “Entrar” (login, senha e código).',true);
+  showMsg('#mr-msg','Usuário criado com sucesso! Use a aba “Entrar” (usuário e senha).',true);
   this.reset();var w=$('#mr-unidade-other');if(w)w.classList.remove('on');
 });
 /* ===== login MANUTENÇÃO ===== */
 $('#form-mlogin').addEventListener('submit',function(e){e.preventDefault();
-  var user=$('#ml-user').value.trim(),pass=$('#ml-pass').value,cod=($('#ml-cod').value||'').trim();
-  var u=USERS.find(function(x){return x.user.toLowerCase()===user.toLowerCase()&&x.pass===pass&&(x.cod||'')===cod;});
-  if(!u){showMsg('#ml-msg','Usuário, senha ou código inválidos. Crie um usuário se ainda não tiver.');return;}
+  var user=$('#ml-user').value.trim(),pass=$('#ml-pass').value;
+  var u=USERS.find(function(x){return x.user.toLowerCase()===user.toLowerCase()&&x.pass===pass;});
+  if(!u){showMsg('#ml-msg','Usuário ou senha inválidos. Crie um usuário se ainda não tiver.');return;}
   CURRENT=u;openManut();
+});
+/* ===== recuperar senha MANUTENÇÃO ===== */
+$('#form-mforgot').addEventListener('submit',function(e){e.preventDefault();
+  var user=$('#mf-user').value.trim(),email=$('#mf-email').value.trim(),p1=$('#mf-pass1').value,p2=$('#mf-pass2').value;
+  var idx=USERS.findIndex(function(x){return x.user.toLowerCase()===user.toLowerCase()&&(x.email||'').toLowerCase()===email.toLowerCase();});
+  if(idx<0){showMsg('#mf-msg','Usuário e e-mail não conferem. Verifique os dados cadastrados.');return;}
+  if(!p1||p1.length<4){showMsg('#mf-msg','A nova senha deve ter ao menos 4 caracteres.');return;}
+  if(p1!==p2){showMsg('#mf-msg','As duas senhas não são iguais. Digite novamente.');return;}
+  USERS[idx].pass=p1;persistUsers();
+  showMsg('#mf-msg','Senha redefinida com sucesso! Use a aba “Entrar” com a nova senha.',true);
+  this.reset();
 });
 /* ===== login CTRANS (supervisores) ===== */
 $('#form-clogin').addEventListener('submit',function(e){e.preventDefault();
@@ -874,28 +896,26 @@ function fmtMB(b){return (b/(1024*1024)).toFixed(b>=1024*1024?1:2)+' MB';}
 function tipoArquivoOk(f){var ty=(f.type||'');var nm=(f.name||'').toLowerCase();return /^image\//.test(ty)||/^video\//.test(ty)||ty==='application/pdf'||/\.pdf$/.test(nm)||/\.(png|jpe?g|gif|webp|heic|bmp|mp4|mov|avi|mkv|webm|m4v)$/.test(nm);}
 function readFile(input){return new Promise(function(res){var f=input.files&&input.files[0];if(!f){res(null);return;}
   var fr=new FileReader();fr.onload=function(){res({name:f.name,type:f.type,data:fr.result});};fr.onerror=function(){res(null);};fr.readAsDataURL(f);});}
+function readFileObj(f){return new Promise(function(res){if(!f){res(null);return;}var fr=new FileReader();fr.onload=function(){res({name:f.name,type:f.type,data:fr.result});};fr.onerror=function(){res(null);};fr.readAsDataURL(f);});}
+function _prevHtml(obj){var media='';if(/^image\//.test(obj.type))media='<img src="'+obj.data+'">';else if(/^video\//.test(obj.type))media='<video src="'+obj.data+'" controls></video>';else media='<div class="fn" style="font-size:26px"><i data-lucide="file-text"></i></div>';return media+'<div class="fn"><i data-lucide="check-circle-2"></i> '+esc(obj.name)+'</div>';}
 $$('#form-chamado input[type=file]').forEach(function(inp){
   inp.addEventListener('change',function(){
     var prev=$('#'+inp.getAttribute('data-prev'));
-    var f=inp.files&&inp.files[0];
-    if(f){
-      if(!tipoArquivoOk(f)){showMsg('#c-msg','Formato não aceito em “'+esc(f.name)+'”. Envie apenas imagem, vídeo ou PDF.');inp.value='';ATT[inp.id]=null;if(prev){prev.classList.remove('on');prev.innerHTML='';}return;}
-      var lim=maxFileBytes();
-      if(f.size>lim){
-        var extra=cloudOn()?'':' Para enviar arquivos maiores, configure a nuvem (botão Nuvem) — assim o arquivo vai por link e o limite sobe para '+fmtMB(MAX_CLOUD)+'.';
-        showMsg('#c-msg','O arquivo “'+esc(f.name)+'” tem '+fmtMB(f.size)+' e ultrapassa o limite de '+fmtMB(lim)+'.'+extra);
-        inp.value='';ATT[inp.id]=null;if(prev){prev.classList.remove('on');prev.innerHTML='';}return;
-      }
+    var multi=!!inp.multiple;
+    var files=inp.files?Array.prototype.slice.call(inp.files):[];
+    var reset=function(){inp.value='';ATT[inp.id]=multi?[]:null;if(prev){prev.classList.remove('on');prev.innerHTML='';}};
+    if(multi&&files.length>5){showMsg('#c-msg','Você pode anexar no máximo 5 arquivos no Boletim de Ocorrência.');reset();return;}
+    var lim=maxFileBytes();
+    for(var vi=0;vi<files.length;vi++){var f=files[vi];
+      if(!tipoArquivoOk(f)){showMsg('#c-msg','Formato não aceito em “'+esc(f.name)+'”. Envie apenas imagem, vídeo ou PDF.');reset();return;}
+      if(f.size>lim){var extra=cloudOn()?'':' Para enviar arquivos maiores, configure a nuvem (botão Nuvem) — assim o arquivo vai por link e o limite sobe para '+fmtMB(MAX_CLOUD)+'.';showMsg('#c-msg','O arquivo “'+esc(f.name)+'” tem '+fmtMB(f.size)+' e ultrapassa o limite de '+fmtMB(lim)+'.'+extra);reset();return;}
     }
-    readFile(inp).then(function(obj){
-      ATT[inp.id]=obj;
-      if(!obj){prev.classList.remove('on');prev.innerHTML='';return;}
-      var media='';
-      if(/^image\//.test(obj.type))media='<img src="'+obj.data+'">';
-      else if(/^video\//.test(obj.type))media='<video src="'+obj.data+'" controls></video>';
-      else if(obj.type==='application/pdf'||/\.pdf$/i.test(obj.name||''))media='<div class="fn" style="font-size:26px"><i data-lucide="file-text"></i></div>';
-      prev.innerHTML=media+'<div class="fn"><i data-lucide="check-circle-2"></i> '+esc(obj.name)+'</div>';
-      prev.classList.add('on');icons();
+    if(!files.length){ATT[inp.id]=multi?[]:null;if(prev){prev.classList.remove('on');prev.innerHTML='';}return;}
+    Promise.all(files.map(readFileObj)).then(function(objs){
+      objs=objs.filter(Boolean);
+      ATT[inp.id]=multi?objs:(objs[0]||null);
+      if(!objs.length){if(prev){prev.classList.remove('on');prev.innerHTML='';}return;}
+      if(prev){prev.innerHTML=objs.map(_prevHtml).join('');prev.classList.add('on');icons();}
     });
   });
 });
@@ -925,7 +945,10 @@ function buildEmail(t){
     'Descrição do ocorrido: '+(t.desc||'—'),''];
   var labels={placa:'Foto da placa',km:'Foto da quilometragem',evid:'Evidência/foto do problema',bo:'Boletim de ocorrência (B.O.)',fa:'Arquivo/foto adicional'};
   var an=t.anexos||{};var links=[];
-  ['placa','km','evid','bo','fa'].forEach(function(k){var a=an[k];if(a&&a.data&&/^https?:\/\//.test(a.data))links.push('• '+(labels[k]||k)+': '+a.data);});
+  ['placa','km','evid','bo','fa'].forEach(function(k){var a=an[k];
+    if(Array.isArray(a)){a.forEach(function(x,i){if(x&&x.data&&/^https?:\/\//.test(x.data))links.push('• '+(labels[k]||k)+(a.length>1?' '+(i+1):'')+': '+x.data);});}
+    else if(a&&a.data&&/^https?:\/\//.test(a.data))links.push('• '+(labels[k]||k)+': '+a.data);
+  });
   if(links.length){body.push('Imagens e anexos deste chamado:');body=body.concat(links);body.push('');}
   body=body.concat(['Você pode acompanhar o andamento e a situação deste chamado diretamente no painel do sistema de chamados.','',
     'Agradecemos o seu contato e permanecemos à disposição.','',
@@ -1014,10 +1037,15 @@ function sendEmail(t,anexB64){var m=buildEmail(t);
       var alvos=_splitDest(m.dest);
       if(!alvos.length){logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:'(nenhum destinatário válido)',status:'FALHA',erro:'lista de e-mails vazia'});mailtoFallback(m);return;}
       var rt=t.email||EMAIL_CTRANS;
+      var locMail=LOCADORAS[t.locadora]||'';
+      var rtLoc=_splitDest([EMAIL_CTRANS,(t.email||'')]).join(',')||EMAIL_CTRANS;
+      var subjLoc='Chamado de manutenção — '+t.unidade+' — '+t.id+' — '+t.placa;
       var att=_attParams(anexB64,t);var skip=att._skip;delete att._skip;
       var bccs=bccList();var bccStr=bccs.join(',');
       alvos.forEach(function(addr){
-        var params={to_email:addr,email:addr,recipient:addr,reply_to:rt,from_email:rt,from_name:(t.solic||'Solicitante'),subject:m.subject,message:m.body,
+        var isLoc=(locMail&&addr.toLowerCase()===String(locMail).toLowerCase());
+        var pRt=isLoc?rtLoc:rt;var pSubj=isLoc?subjLoc:m.subject;
+        var params={to_email:addr,email:addr,recipient:addr,reply_to:pRt,from_email:rt,from_name:(t.solic||'Solicitante'),subject:pSubj,message:m.body,
           bcc:bccStr,bcc_email:bccStr,
           chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic};
         if(!skip){for(var kk in att){if(att.hasOwnProperty(kk))params[kk]=att[kk];}}
@@ -1043,8 +1071,14 @@ function sendEmail(t,anexB64){var m=buildEmail(t);
   mailtoFallback(m);
 }
 function mailtoFallback(m){var href='mailto:'+encodeURIComponent(m.dest.join(','))+'?subject='+encodeURIComponent(m.subject)+'&body='+encodeURIComponent(m.body);try{window.location.href=href;}catch(e){}}
-function buildStatusEmail(t){
-  var dest=[t.email,EMAIL_CTRANS,(CLOUD.alertEmail||'')].filter(function(v,i,a){return v&&a.indexOf(v)===i;});
+function buildStatusEmail(t,opts){
+  opts=opts||{solic:true,locadora:false};
+  var dest=[];
+  if(opts.solic!==false&&t.email)dest.push(t.email);
+  dest.push(EMAIL_CTRANS);
+  if(CLOUD.alertEmail)dest.push(CLOUD.alertEmail);
+  if(opts.locadora&&LOCADORAS[t.locadora])dest.push(LOCADORAS[t.locadora]);
+  dest=dest.filter(function(v,i,a){return v&&a.indexOf(v)===i;});
   var subject='Atualização do chamado '+t.id+' — '+t.status;
   var body=['Prezado(a) '+(t.solic||'solicitante')+',','',
     'A situação do seu chamado de manutenção foi atualizada.','',
@@ -1055,9 +1089,26 @@ function buildStatusEmail(t){
   body=body.concat(['','Você pode acompanhar o andamento diretamente no painel do sistema de chamados.','','Atenciosamente,','CTRANS — Secretaria Estadual de Saúde de Pernambuco']);
   return {dest:dest,subject:subject,body:body.join('\n')};
 }
-function sendStatusEmail(t){var m=buildStatusEmail(t);
+function sendStatusEmail(t,opts){var m=buildStatusEmail(t,opts);
   if(emailAuto()&&window.emailjs){try{emailjs.init(CLOUD.ejsPub);var alvos=_splitDest(m.dest);if(!alvos.length){logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:'(nenhum destinatário válido)',status:'FALHA',erro:'lista de e-mails vazia'});return false;}var bccs=bccList();var bccStr=bccs.join(',');alvos.forEach(function(addr){var nid=notifCreate({chamado:t.id,dest:addr,tipo:'Atualização de situação'});emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,{to_email:addr,email:addr,recipient:addr,reply_to:EMAIL_CTRANS,subject:m.subject,message:m.body,bcc:bccStr,bcc_email:bccStr,chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic}).then(function(){notifSent(nid);logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:addr,status:'OK',erro:''});},function(err){notifFail(nid,_errTxt(err));logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:addr,status:'FALHA',erro:_errTxt(err)});});});bccs.forEach(function(addr){var nidB=notifCreate({chamado:t.id,dest:addr,tipo:'Cópia oculta (gestor)'});emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,{to_email:addr,email:addr,recipient:addr,reply_to:EMAIL_CTRANS,subject:m.subject,message:m.body,chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic}).then(function(){notifSent(nidB);logMail({ts:nowISO(),tipo:'Status (BCC gestor)',chamado:t.id,dest:addr,status:'OK',erro:''});},function(err){notifFail(nidB,_errTxt(err));logMail({ts:nowISO(),tipo:'Status (BCC gestor)',chamado:t.id,dest:addr,status:'FALHA',erro:_errTxt(err)});});});return true;}catch(e){logMail({ts:nowISO(),tipo:'Status',chamado:t.id,dest:'(exceção)',status:'FALHA',erro:_errTxt(e)});}}
   return false;
+}
+function statusNotifyModal(t){
+  var locMail=LOCADORAS[t.locadora]||'';
+  openModal('<h3 style="margin:0 0 6px"><i data-lucide="mail" style="width:18px;height:18px;vertical-align:-3px"></i> Enviar aviso de atualização?</h3>'+
+    '<p style="color:var(--muted);font-size:13px;margin:0 0 12px">O chamado <b>'+esc(t.id)+'</b> ('+esc(t.placa)+') passou para <b>'+esc(t.status)+'</b>. Deseja enviar um e-mail avisando sobre a nova situação? Marque quem deve receber:</p>'+
+    '<label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:14px"><input type="checkbox" id="stn-solic"'+(t.email?' checked':'')+(t.email?'':' disabled')+'> Solicitante '+(t.email?('('+esc(t.email)+')'):'(sem e-mail cadastrado)')+'</label>'+
+    '<label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:14px"><input type="checkbox" id="stn-loc"'+(locMail?'':' disabled')+'> Locadora '+(locMail?('('+esc(locMail)+')'):'(sem e-mail cadastrado)')+'</label>'+
+    '<p style="color:var(--muted);font-size:12px;margin:4px 0 12px">A CTRANS sempre recebe uma cópia.</p>'+
+    '<div class="msg" id="stn-msg"></div>'+
+    '<div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="stn-send"><i data-lucide="send"></i> Enviar aviso</button><button class="btn ghost" id="stn-skip"><i data-lucide="x"></i> Não enviar</button></div>');
+  var sk=$('#stn-skip');if(sk)sk.addEventListener('click',function(){$('#modal').classList.remove('on');});
+  var sd=$('#stn-send');if(sd)sd.addEventListener('click',function(){
+    var opts={solic:($('#stn-solic')&&$('#stn-solic').checked),locadora:($('#stn-loc')&&$('#stn-loc').checked)};
+    var ok=sendStatusEmail(t,opts);
+    $('#modal').classList.remove('on');
+  });
+  icons();
 }
 /* =================== ABRIR CHAMADO =================== */
 $('#form-chamado').addEventListener('submit',function(e){e.preventDefault();
@@ -1073,7 +1124,7 @@ $('#form-chamado').addEventListener('submit',function(e){e.preventDefault();
     locadora:locadora,solic:$('#c-solic').value.trim(),email:$('#c-email').value.trim(),
     km:$('#c-km').value.trim(),motivo:motivo,desc:$('#c-desc').value.trim(),
     status:'Aberto',atualizado:'',atualizadoPor:'',obsCtrans:'',
-    anexos:{placa:ATT['f-placa']||null,evid:ATT['f-evid']||null,km:ATT['f-km']||null,bo:ATT['f-bo']||null,fa:ATT['f-fa']||null},
+    anexos:{placa:ATT['f-placa']||null,evid:ATT['f-evid']||null,km:ATT['f-km']||null,bo:(Array.isArray(ATT['f-bo'])?(ATT['f-bo'].length?ATT['f-bo']:null):(ATT['f-bo']||null)),fa:ATT['f-fa']||null},
     userLogin:CURRENT?CURRENT.user:''};
   refillSelects();
   var m=buildEmail(t);
@@ -1081,8 +1132,10 @@ $('#form-chamado').addEventListener('submit',function(e){e.preventDefault();
   $('#c-msg').innerHTML='Processando chamado <b>'+t.id+'</b>…';
   /* envia anexos à nuvem (quando configurada), salva e dispara e-mail */
   var keys=Object.keys(t.anexos);
-  var anexB64=[];keys.forEach(function(k){var a=t.anexos[k];if(a&&a.data&&/^data:/.test(a.data))anexB64.push({key:k,name:a.name,type:a.type,data:a.data});});
-  Promise.all(keys.map(function(k){return uploadAtt(t.anexos[k]);})).then(function(ups){
+  var anexB64=[];keys.forEach(function(k){var a=t.anexos[k];
+    if(Array.isArray(a)){a.forEach(function(x,i){if(x&&x.data&&/^data:/.test(x.data))anexB64.push({key:(i?k+'_'+(i+1):k),name:x.name,type:x.type,data:x.data});});}
+    else if(a&&a.data&&/^data:/.test(a.data))anexB64.push({key:k,name:a.name,type:a.type,data:a.data});});
+  Promise.all(keys.map(function(k){return uploadAny(t.anexos[k]);})).then(function(ups){
     keys.forEach(function(k,ix){t.anexos[k]=ups[ix];});
     TICKETS.unshift(t);persistTickets();cloudInsert(t);notifyWebhook(t);
     $('#c-msg').innerHTML='Chamado <b>'+t.id+'</b> aberto com sucesso! Confirmação '+(emailAuto()?'enviada automaticamente':'direcionada')+' para: '+esc(m.dest.join(', '))+'.'+
@@ -1116,6 +1169,7 @@ function barsH(id,pairs,color){var c=chart(id);if(!c)return;var T=tc();pairs=pai
     series:[{type:'bar',data:pairs.map(function(p){return p[1];}),itemStyle:{color:color||'#3E6E68',borderRadius:[0,6,6,0]},label:{show:true,position:'right',color:T.lab,fontSize:11}}]};
   LASTOPT[id]=opt;c.setOption(opt,true);}
 var STCOLOR={'Aberto':'#6E8BA0','Em Andamento':'#C08A5E','Resolvido':'#5C8A6B','Com Feedback':'#3E6E68'};
+function _stNoProg(obj){var o={};Object.keys(obj||{}).forEach(function(k){if(k!=='Em Andamento')o[k]=obj[k];});return o;}
 /* =================== MODAL MEDIA =================== */
 function openModal(html){$('#modal-body').innerHTML=html;$('#modal').classList.add('on');icons();}
 $('#modal-close').addEventListener('click',function(){$('#modal').classList.remove('on');});
@@ -1128,11 +1182,11 @@ function bindThumbs(root){$$('.thumb',root).forEach(function(el){el.addEventList
   var full=el.getAttribute('data-full'),kind=el.getAttribute('data-kind');
   openModal(kind==='vid'?'<video src="'+full+'" controls autoplay style="width:100%"></video>':'<img src="'+full+'">');
 });});}
-function anexosCell(t){var a=t.anexos||{};var parts=[];['placa','evid','km','bo','fa'].forEach(function(k){if(a[k])parts.push(mediaHtml(a[k]));});
+function anexosCell(t){var a=t.anexos||{};var parts=[];['placa','evid','km','bo','fa'].forEach(function(k){var v=a[k];if(Array.isArray(v)){v.forEach(function(x){if(x)parts.push(mediaHtml(x));});}else if(v)parts.push(mediaHtml(v));});
   return parts.length?('<div style="display:flex;gap:5px;flex-wrap:wrap">'+parts.join('')+'</div>'):'<span style="color:#8A8178">sem anexos</span>';}
 /* =================== RENDER MANUTENÇÃO (página 2) =================== */
 function kpiCard(cls,icon,lab,val,sub){return '<div class="kpi '+cls+'"><div class="lab"><i data-lucide="'+icon+'"></i> '+lab+'</div><div class="val">'+val+'</div><div class="sub">'+sub+'</div></div>';}
-function mData(){if(!CURRENT)return [];return TICKETS.filter(function(t){return t.unidade===CURRENT.unidade||t.userLogin===CURRENT.user;});}
+function mData(){if(!CURRENT)return [];return TICKETS.filter(function(t){return t.userLogin===CURRENT.user;});}
 function mRender(){
   var data=mData();
   var ab=data.filter(function(t){return t.status==='Aberto';}).length;
@@ -1141,11 +1195,10 @@ function mRender(){
   var fb=data.filter(function(t){return t.status==='Com Feedback';}).length;
   $('#m-kpis').innerHTML=
     kpiCard('k-open','folder-open','Chamados abertos',ab,'Aguardando análise')+
-    kpiCard('k-prog','loader','Em andamento',pr,'Em atendimento')+
     kpiCard('k-done','check-circle-2','Resolvidos',rs,'Concluídos')+
     kpiCard('k-fb','message-circle','Com feedback',fb,'Retorno registrado')+
-    kpiCard('','hash','Total da unidade',data.length,esc(CURRENT?CURRENT.unidade:''));
-  donut('m-ch-status',countBy(data,function(t){return t.status;}),STCOLOR);
+    kpiCard('','hash','Meus chamados',data.length,esc(CURRENT?CURRENT.nome:''));
+  donut('m-ch-status',_stNoProg(countBy(data,function(t){return t.status;})),STCOLOR);
   barsH('m-ch-motivo',toPairs(countBy(data,function(t){return t.motivo;})),'#C08A5E');
   var rk=toPairs(countBy(data,function(t){return t.placa;})).slice(0,12);
   $('#m-rank').innerHTML=rk.length?rk.map(function(p,i){return '<li data-tp="placa" data-v="'+esc(p[0])+'" title="Duplo clique: detalhes do veículo"><span class="pos">'+(i+1)+'</span><span class="nm">'+esc(p[0])+'</span><span class="ct">'+p[1]+' chamado(s)</span></li>';}).join(''):'<li><span class="nm" style="color:#8A8178">Nenhum chamado ainda.</span></li>';
@@ -1195,7 +1248,7 @@ function cRenderCharts(){
     kpiCard('k-prog','loader','Em andamento',pr,'Em atendimento')+
     kpiCard('k-done','check-circle-2','Resolvidos',rs,'Concluídos')+
     kpiCard('k-fb','message-circle','Com feedback',fb,'Retorno dado');
-  donut('c-ch-status',countBy(data,function(t){return t.status;}),STCOLOR);
+  donut('c-ch-status',_stNoProg(countBy(data,function(t){return t.status;})),STCOLOR);
   barsH('c-ch-motivo',toPairs(countBy(data,function(t){return t.motivo;})),'#C08A5E');
   barsH('c-ch-unidade',toPairs(countBy(data,function(t){return t.unidade;})),'#3E6E68');
   var uni=toPairs(countBy(data,function(t){return t.unidade;}));
@@ -1211,7 +1264,7 @@ function cCompare(){
   if(ai||af||bi||bf){A=TICKETS.filter(function(t){return inRange(t.criado,ai,af);});B=TICKETS.filter(function(t){return inRange(t.criado,bi,bf);});}
   else{var now=new Date();var m0=new Date(now.getFullYear(),now.getMonth(),1);var mPrev=new Date(now.getFullYear(),now.getMonth()-1,1);
     A=TICKETS.filter(function(t){return new Date(t.criado)>=m0;});B=TICKETS.filter(function(t){return new Date(t.criado)>=mPrev&&new Date(t.criado)<m0;});}
-  var cats=STATUS;var c=chart('c-ch-cmp');if(!c)return;var T=tc();
+  var cats=STATUS.filter(function(s){return s!=='Em Andamento';});var c=chart('c-ch-cmp');if(!c)return;var T=tc();
   var opt={grid:baseGrid(),tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},legend:{bottom:0,textStyle:{color:T.muted}},
     xAxis:{type:'category',data:cats,axisLabel:{color:T.ink,fontSize:10}},yAxis:{type:'value',axisLabel:{color:T.muted}},
     series:[{name:aLab,type:'bar',data:cats.map(function(s){return A.filter(function(t){return t.status===s;}).length;}),itemStyle:{color:'#3E6E68',borderRadius:[4,4,0,0]}},
@@ -1245,7 +1298,7 @@ function cRenderTable(){
   $$('.st-sel',$('#c-tbl')).forEach(function(sel){sel.addEventListener('change',function(){
     var id=sel.getAttribute('data-id');var t=TICKETS.find(function(x){return x.id===id;});if(!t)return;
     t.status=sel.value;t.atualizado=nowISO();t.atualizadoPor=SUP?SUP.u:'CTRANS';
-    persistTickets();cloudUpdate(t);notifyWebhookStatus(t);sendStatusEmail(t);cRenderTable();
+    persistTickets();cloudUpdate(t);notifyWebhookStatus(t);cRenderTable();statusNotifyModal(t);
   });});
   $$('.del-btn',$('#c-tbl')).forEach(function(b){b.addEventListener('click',function(){excluirChamado(b.getAttribute('data-id'));});});
   icons();
@@ -1404,8 +1457,8 @@ function cRenderUnidades(){
     return '<div class="unitcard" data-uni="'+esc(o.u)+'"'+(o.u===UN_FILTER.sel?' style="border-left-color:var(--warn);box-shadow:0 0 0 2px var(--accent-soft)"':'')+'>'+
       '<div class="un-nm"><i data-lucide="building-2"></i> '+esc(o.u)+'</div>'+
       '<div class="un-tot">'+o.tot+'</div><div class="un-sub">chamado(s) no período</div>'+
-      '<div class="un-bar">'+seg(o.ab,'#6E8BA0')+seg(o.pr,'#C08A5E')+seg(o.rs,'#5C8A6B')+seg(o.fb,'#3E6E68')+'</div>'+
-      '<div class="un-legend"><span><i style="background:#6E8BA0"></i>Abertos <b>'+o.ab+'</b></span><span><i style="background:#C08A5E"></i>Andamento <b>'+o.pr+'</b></span><span><i style="background:#5C8A6B"></i>Resolvidos <b>'+o.rs+'</b></span><span><i style="background:#3E6E68"></i>Feedback <b>'+o.fb+'</b></span></div>'+
+      '<div class="un-bar">'+seg(o.ab,'#6E8BA0')+seg(o.rs,'#5C8A6B')+seg(o.fb,'#3E6E68')+'</div>'+
+      '<div class="un-legend"><span><i style="background:#6E8BA0"></i>Abertos <b>'+o.ab+'</b></span><span><i style="background:#5C8A6B"></i>Resolvidos <b>'+o.rs+'</b></span><span><i style="background:#3E6E68"></i>Feedback <b>'+o.fb+'</b></span></div>'+
       '<div class="un-res">Taxa de resolução: <b>'+o.resol+'%</b></div></div>';
   }).join(''):'<div class="card" style="grid-column:1/-1;text-align:center;color:var(--muted)">Nenhum chamado no período selecionado.</div>';
   $$('#un-cards .unitcard').forEach(function(c){c.addEventListener('click',function(){var u=c.getAttribute('data-uni');UN_FILTER.sel=(UN_FILTER.sel===u?'':u);cRenderUnidades();});});
@@ -1422,7 +1475,7 @@ function unStacked(id,arr){
   var mk=function(name,key,color){return {name:name,type:'bar',stack:'s',data:top.map(function(o){return o[key];}),itemStyle:{color:color}};};
   var opt={grid:baseGrid(),tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},legend:{bottom:0,textStyle:{color:T.muted,fontSize:10}},
     xAxis:{type:'value',axisLabel:{color:T.muted}},yAxis:{type:'category',data:cats,axisLabel:{color:T.ink,fontSize:10}},
-    series:[mk('Abertos','ab','#6E8BA0'),mk('Em andamento','pr','#C08A5E'),mk('Resolvidos','rs','#5C8A6B'),mk('Com feedback','fb','#3E6E68')]};
+    series:[mk('Abertos','ab','#6E8BA0'),mk('Resolvidos','rs','#5C8A6B'),mk('Com feedback','fb','#3E6E68')]};
   LASTOPT[id]=opt;c.setOption(opt,true);
 }
 function exportUnidadesExcel(){
