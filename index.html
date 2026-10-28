@@ -964,7 +964,10 @@ function buildEmail(t){
   body=body.concat(['Você pode acompanhar o andamento e a situação deste chamado diretamente no painel do sistema de chamados.','',
     'Agradecemos o seu contato e permanecemos à disposição.','',
     'Atenciosamente,','CTRANS — Secretaria Estadual de Saúde de Pernambuco']);
-  return {dest:dest,subject:subject,body:body.join('\n')};
+  /* Destinatários principais (TO) = solicitante + locadora; CTRANS entra apenas em CÓPIA (CC) */
+  var toMain=[t.email,LOCADORAS[t.locadora]||''].filter(function(v,i,a){return v&&a.indexOf(v)===i;});
+  var ccMain=[EMAIL_CTRANS,(CLOUD.alertEmail||'')].filter(function(v,i,a){return v&&a.indexOf(v)===i;});
+  return {dest:dest,to:toMain,cc:ccMain,subject:subject,body:body.join('\n')};
 }
 function _splitDest(dest){return dest.join(',').split(/[,;\/]/).map(function(s){return s.trim();}).filter(function(v,i,a){return v&&/.+@.+\..+/.test(v)&&a.indexOf(v)===i;});}
 /* Lista de cópias ocultas (BCC) — gestor. Não aparece para os demais destinatários. */
@@ -1047,18 +1050,23 @@ function sendEmail(t,anexB64){var m=buildEmail(t);
       emailjs.init(CLOUD.ejsPub);
       var alvos=_splitDest(m.dest);
       if(!alvos.length){logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:'(nenhum destinatário válido)',status:'FALHA',erro:'lista de e-mails vazia'});mailtoFallback(m);return;}
+      /* Remetente/Reply = SOLICITANTE: o e-mail se comporta como se tivesse sido enviado pelo solicitante. */
       var rt=t.email||EMAIL_CTRANS;
       var locMail=LOCADORAS[t.locadora]||'';
-      var rtLoc=_splitDest([EMAIL_CTRANS,(t.email||'')]).join(',')||EMAIL_CTRANS;
+      /* Quando a locadora responder, o destinatário será SOMENTE o solicitante (CTRANS não entra na resposta). */
+      var rtLoc=_splitDest([(t.email||'')]).join(',')||rt;
+      /* CTRANS (e e-mail de alerta, se houver) entram como CÓPIA (CC) visível no e-mail da locadora — o intermediário. */
+      var ccStr=_splitDest([EMAIL_CTRANS,(CLOUD.alertEmail||'')]).join(',');
       var subjLoc='Chamado de manutenção — '+t.unidade+' — '+t.id+' — '+t.placa;
       var att=_attParams(anexB64,t);var skip=att._skip;delete att._skip;
       var bccs=bccList();var bccStr=bccs.join(',');
       alvos.forEach(function(addr){
         var isLoc=(locMail&&addr.toLowerCase()===String(locMail).toLowerCase());
         var pRt=isLoc?rtLoc:rt;var pSubj=isLoc?subjLoc:m.subject;
-        var params={to_email:addr,email:addr,recipient:addr,reply_to:pRt,from_email:rt,from_name:(t.solic||'Solicitante'),subject:pSubj,message:m.body,
+        var params={to_email:addr,email:addr,recipient:addr,reply_to:pRt,reply_to_name:(t.solic||'Solicitante'),from_email:rt,from_name:(t.solic||'Solicitante'),subject:pSubj,message:m.body,
           bcc:bccStr,bcc_email:bccStr,
           chamado:t.id,placa:t.placa,unidade:t.unidade,locadora:t.locadora,solicitante:t.solic};
+        if(isLoc&&ccStr){params.cc=ccStr;params.cc_email=ccStr;}
         if(!skip){for(var kk in att){if(att.hasOwnProperty(kk))params[kk]=att[kk];}}
         var nid=notifCreate({chamado:t.id,dest:addr,tipo:'Confirmação de abertura'});
         emailjs.send(CLOUD.ejsService,CLOUD.ejsTemplate,params).then(
@@ -1081,7 +1089,16 @@ function sendEmail(t,anexB64){var m=buildEmail(t);
   logMail({ts:nowISO(),tipo:'Abertura',chamado:t.id,dest:(m.dest||[]).join(', '),status:'FALLBACK',erro:'EmailJS não configurado — abriu app de e-mail (mailto)'});
   mailtoFallback(m);
 }
-function mailtoFallback(m){var href='mailto:'+encodeURIComponent(m.dest.join(','))+'?subject='+encodeURIComponent(m.subject)+'&body='+encodeURIComponent(m.body);try{window.location.href=href;}catch(e){}}
+function mailtoFallback(m){
+  /* To = solicitante + locadora; Cc = CTRANS (intermediário). Assim a resposta já volta para esses destinatários. */
+  var to=(m.to&&m.to.length?m.to:(m.dest||[]));
+  var qs=[];
+  if(m.cc&&m.cc.length)qs.push('cc='+encodeURIComponent(m.cc.join(',')));
+  qs.push('subject='+encodeURIComponent(m.subject));
+  qs.push('body='+encodeURIComponent(m.body));
+  var href='mailto:'+encodeURIComponent(to.join(','))+'?'+qs.join('&');
+  try{window.location.href=href;}catch(e){}
+}
 function buildStatusEmail(t,opts){
   opts=opts||{solic:true,locadora:false};
   var dest=[];
