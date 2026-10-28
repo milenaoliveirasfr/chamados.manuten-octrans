@@ -670,6 +670,20 @@ function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}ca
 var TICKETS=load(K_TK,[]);
 var USERS=load(K_US,[]);
 function persistTickets(){save(K_TK,TICKETS);}
+/* Chamados ATIVOS = todos menos os logicamente excluídos (excluido:true).
+   A exclusão é lógica (soft delete) para que o estado "excluído" trafegue
+   pela nuvem (Supabase) e seja respeitado em todos os dispositivos. */
+function activeTickets(){return (TICKETS||[]).filter(function(t){return t&&!t.excluido;});}
+/* Fonte unificada do painel de excluídos: une o log local (K_DELLOG) com os
+   chamados marcados como excluídos na nuvem, garantindo que o quadro de
+   excluídos apareça mesmo em outro dispositivo do supervisor. */
+function allExclusoes(){
+  var map={},out=[];
+  try{(delLog()||[]).forEach(function(e){if(e&&e.chamado){if(!map[e.chamado]){map[e.chamado]=e;out.push(e);}}else if(e){out.push(e);}});}catch(_){}
+  (TICKETS||[]).forEach(function(t){if(t&&t.excluido&&!map[t.id]){var info=t.exclusaoInfo||{};var rec={ts:info.ts||t.atualizado||'',chamado:t.id,placa:t.placa,unidade:t.unidade,solic:t.solic,motivo:t.motivo,motivoExcl:info.motivoExcl||'',por:info.por||t.atualizadoPor||'',justificativa:info.justificativa||'',obs:info.obs||''};map[t.id]=rec;out.push(rec);}});
+  out.sort(function(a,b){return new Date(b.ts||0)-new Date(a.ts||0);});
+  return out;
+}
 function persistUsers(){save(K_US,USERS);}
 /* =================== UTIL =================== */
 var $=function(s,r){return (r||document).querySelector(s);};
@@ -1267,7 +1281,7 @@ function anexosCell(t){var a=t.anexos||{};var parts=[];['placa','evid','km','bo'
 function kpiCard(cls,icon,lab,val,sub){return '<div class="kpi '+cls+'"><div class="kpi-ic"><i data-lucide="'+icon+'"></i></div><div class="kpi-body"><div class="lab">'+lab+'</div><div class="val">'+val+'</div><div class="sub">'+sub+'</div></div></div>';}
 var M_FILTER={ini:'',fim:''};
 function _fday(s){if(!s)return '';var p=String(s).split('-');return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):s;}
-function mData(){if(!CURRENT)return [];return TICKETS.filter(function(t){return t.userLogin===CURRENT.user&&inRange(t.criado,M_FILTER.ini,M_FILTER.fim);});}
+function mData(){if(!CURRENT)return [];return TICKETS.filter(function(t){return !t.excluido&&t.userLogin===CURRENT.user&&inRange(t.criado,M_FILTER.ini,M_FILTER.fim);});}
 function mRender(){
   var data=mData();
   var ab=data.filter(function(t){return t.status==='Aberto';}).length;
@@ -1293,7 +1307,7 @@ function mRender(){
 function cRender(){cRenderCharts();cRenderStatus();cRenderTable();}
 function ageLabel(iso){var d=new Date(iso);if(isNaN(d))return {t:'—',c:''};var h=Math.floor((Date.now()-d.getTime())/36e5);var cls=h>=72?'crit':(h>=24?'warn':'');var txt=h<1?'há menos de 1h':(h<24?('há '+h+'h'):('há '+Math.floor(h/24)+'d'));return {t:txt,c:cls};}
 function cRenderStatus(){
-  var data=TICKETS;
+  var data=activeTickets();
   var ab=data.filter(function(t){return t.status==='Aberto';});
   var pr=data.filter(function(t){return t.status==='Em Andamento';});
   var rs=data.filter(function(t){return t.status==='Resolvido';});
@@ -1319,7 +1333,7 @@ function cRenderStatus(){
 }
 function inRange(iso,ini,fim){var d=new Date(iso);if(ini&&d<new Date(ini))return false;if(fim){var f=new Date(fim);f.setHours(23,59,59);if(d>f)return false;}return true;}
 function cRenderCharts(){
-  var data=TICKETS;
+  var data=activeTickets();
   var ab=data.filter(function(t){return t.status==='Aberto';}).length;
   var pr=data.filter(function(t){return t.status==='Em Andamento';}).length;
   var rs=data.filter(function(t){return t.status==='Resolvido';}).length;
@@ -1342,9 +1356,9 @@ function cCompare(){
   var ai=$('#cp-a-ini').value,af=$('#cp-a-fim').value,bi=$('#cp-b-ini').value,bf=$('#cp-b-fim').value;
   var aLab=(ai||bf)?'Período A':'Este mês',bLab=(bi||bf)?'Período B':'Mês anterior';
   var A,B;
-  if(ai||af||bi||bf){A=TICKETS.filter(function(t){return inRange(t.criado,ai,af);});B=TICKETS.filter(function(t){return inRange(t.criado,bi,bf);});}
+  if(ai||af||bi||bf){A=activeTickets().filter(function(t){return inRange(t.criado,ai,af);});B=activeTickets().filter(function(t){return inRange(t.criado,bi,bf);});}
   else{var now=new Date();var m0=new Date(now.getFullYear(),now.getMonth(),1);var mPrev=new Date(now.getFullYear(),now.getMonth()-1,1);
-    A=TICKETS.filter(function(t){return new Date(t.criado)>=m0;});B=TICKETS.filter(function(t){return new Date(t.criado)>=mPrev&&new Date(t.criado)<m0;});}
+    A=activeTickets().filter(function(t){return new Date(t.criado)>=m0;});B=activeTickets().filter(function(t){return new Date(t.criado)>=mPrev&&new Date(t.criado)<m0;});}
   var cats=STATUS.filter(function(s){return s!=='Em Andamento';});var c=chart('c-ch-cmp');if(!c)return;var T=tc();
   var opt={grid:baseGrid(),tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},legend:{bottom:0,textStyle:{color:T.muted}},
     xAxis:{type:'category',data:cats,axisLabel:{color:T.ink,fontSize:10}},yAxis:{type:'value',axisLabel:{color:T.muted}},
@@ -1357,7 +1371,7 @@ $('#cp-cmp').addEventListener('click',cCompare);
 function cFiltered(){
   var q=($('#cd-busca').value||'').trim().toUpperCase();
   var uni=$('#cd-f-uni').value,st=$('#cd-f-st').value;
-  return TICKETS.filter(function(t){
+  return activeTickets().filter(function(t){
     if(q&&t.placa.toUpperCase().indexOf(q)<0)return false;
     if(uni&&t.unidade!==uni)return false;
     if(st&&t.status!==st)return false;
@@ -1398,17 +1412,22 @@ function _delModalHtml(titulo,descricao){
     '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="del-confirm" style="background:var(--bad);border-color:var(--bad)"><i data-lucide="trash-2"></i> Confirmar exclusão</button><button class="btn ghost" id="del-cancel"><i data-lucide="x"></i> Cancelar</button></div>';
 }
 function _doExclusao(ids,motivo,just,obs){
+  var _ts=nowISO();var _por=SUP?SUP.u:'CTRANS';
   ids.forEach(function(id){var t=TICKETS.find(function(x){return x.id===id;});if(!t)return;
     try{logAudit('Exclusão de chamado',t,{detalhe:'Motivo: '+(motivo||'—')+(just?(' — '+just):'')+(obs?(' | Obs.: '+obs):'')});}catch(e){}
-    logDel({ts:nowISO(),chamado:id,placa:t.placa,unidade:t.unidade,solic:t.solic,motivo:t.motivo,motivoExcl:motivo,por:SUP?SUP.u:'CTRANS',justificativa:just,obs:obs});
-    cloudDelete(id);
+    logDel({ts:_ts,chamado:id,placa:t.placa,unidade:t.unidade,solic:t.solic,motivo:t.motivo,motivoExcl:motivo,por:_por,justificativa:just,obs:obs});
+    /* Exclusão LÓGICA (soft delete): marca o chamado e SINCRONIZA pela nuvem via
+       cloudUpdate, para que o solicitante deixe de vê-lo em TODOS os dispositivos. */
+    t.excluido=true;
+    t.exclusaoInfo={ts:_ts,motivoExcl:motivo,justificativa:just,obs:obs,por:_por};
+    t.atualizado=_ts;t.atualizadoPor=_por;
+    cloudUpdate(t);
   });
-  TICKETS=TICKETS.filter(function(x){return ids.indexOf(x.id)<0;});
   persistTickets();
-  try{cRenderTable();}catch(e){}try{cRenderStatus();}catch(e){}try{cRenderCharts();}catch(e){}
-  /* Atualiza também o painel do solicitante (mesmo navegador): o chamado some da visão de quem o abriu. */
+  /* O chamado some da visão do solicitante e dos gráficos/quadros do supervisor,
+     permanecendo apenas no Painel de chamados excluídos. */
   try{mRender();}catch(e){}
-  /* Mantém o Painel de chamados excluídos sincronizado, se estiver aberto. */
+  try{cRenderTable();}catch(e){}try{cRenderStatus();}catch(e){}try{cRenderCharts();}catch(e){}
   try{_delRender();}catch(e){}
 }
 function _bindDelModal(ids){
@@ -1434,7 +1453,7 @@ function excluirSelecionados(){
 }
 /* ===== HISTÓRICO DE EXCLUSÕES ===== */
 var DEL_FILTER={ini:'',fim:'',motivo:'',unidade:''};
-function _delFiltrado(){var a=delLog();var f=DEL_FILTER;return a.filter(function(e){
+function _delFiltrado(){var a=allExclusoes();var f=DEL_FILTER;return a.filter(function(e){
   if((f.ini||f.fim)&&!inRange(e.ts,f.ini,f.fim))return false;
   if(f.motivo&&(e.motivoExcl||'')!==f.motivo)return false;
   if(f.unidade&&(e.unidade||'')!==f.unidade)return false;
@@ -1444,7 +1463,7 @@ function _delRowsHtml(a){return a.length?a.map(function(e){return '<tr><td style
 function _delRender(){var a=_delFiltrado();var tb=$('#dl-tbody');if(tb)tb.innerHTML=_delRowsHtml(a);var tot=$('#dl-total');if(tot)tot.textContent=a.length;}
 function delLogModal(){
   var a=_delFiltrado();
-  var full=delLog();
+  var full=allExclusoes();
   var _uniq=function(arr){return arr.filter(function(v){return v;}).filter(function(v,i,x){return x.indexOf(v)===i;}).sort();};
   var motivos=_uniq(full.map(function(e){return e.motivoExcl||'';}));
   var unids=_uniq(full.map(function(e){return e.unidade||'';}));
@@ -1460,7 +1479,7 @@ function delLogModal(){
     '<div class="fg"><label>Unidade</label><select id="dl-uni" style="'+selSty+'">'+optU+'</select></div>'+
     '<div class="fb-actions"><button class="btn sm" id="dl-filtrar"><i data-lucide="filter"></i> Filtrar</button>'+
     '<button class="btn ghost sm" id="dl-limpar"><i data-lucide="x"></i> Limpar</button></div></div>';
-  openModal('<h3 style="margin:0 0 6px">Painel de chamados excluídos</h3><p style="color:var(--muted);font-size:13px;margin:0 0 10px">Chamados removidos pela gestão (fora dos gráficos), com data, motivo, justificativa e observação. Exibindo: <b id="dl-total">'+a.length+'</b> registro(s).</p>'+bar+'<div style="max-height:48vh;overflow:auto;border:1px solid var(--line);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:7px">Data/hora</th><th style="text-align:left;padding:7px">Chamado</th><th style="text-align:left;padding:7px">Placa</th><th style="text-align:left;padding:7px">Unidade</th><th style="text-align:left;padding:7px">Motivo da exclusão</th><th style="text-align:left;padding:7px">Excluído por</th><th style="text-align:left;padding:7px">Justificativa</th><th style="text-align:left;padding:7px">Observação</th></tr></thead><tbody id="dl-tbody">'+_delRowsHtml(a)+'</tbody></table></div>'+
+  openModal('<h3 style="margin:0 0 6px">Painel de chamados excluídos</h3><p style="color:var(--muted);font-size:13px;margin:0 0 10px">Chamados removidos pela gestão por exclusão lógica — saem dos gráficos e da visão do solicitante e ficam apenas aqui, sincronizados pela nuvem. Com data, motivo, justificativa e observação. Exibindo: <b id="dl-total">'+a.length+'</b> registro(s).</p>'+bar+'<div style="max-height:48vh;overflow:auto;border:1px solid var(--line);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:7px">Data/hora</th><th style="text-align:left;padding:7px">Chamado</th><th style="text-align:left;padding:7px">Placa</th><th style="text-align:left;padding:7px">Unidade</th><th style="text-align:left;padding:7px">Motivo da exclusão</th><th style="text-align:left;padding:7px">Excluído por</th><th style="text-align:left;padding:7px">Justificativa</th><th style="text-align:left;padding:7px">Observação</th></tr></thead><tbody id="dl-tbody">'+_delRowsHtml(a)+'</tbody></table></div>'+
     '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn ghost" id="del-xlsx"><i data-lucide="file-spreadsheet"></i> Exportar para Excel</button></div>');
   var fb=$('#dl-filtrar');if(fb)fb.addEventListener('click',function(){DEL_FILTER.ini=($('#dl-ini').value||'');DEL_FILTER.fim=($('#dl-fim').value||'');DEL_FILTER.motivo=($('#dl-motivo').value||'');DEL_FILTER.unidade=($('#dl-uni').value||'');_delRender();});
   var lb=$('#dl-limpar');if(lb)lb.addEventListener('click',function(){DEL_FILTER.ini='';DEL_FILTER.fim='';DEL_FILTER.motivo='';DEL_FILTER.unidade='';var i=$('#dl-ini');if(i)i.value='';var f=$('#dl-fim');if(f)f.value='';var m=$('#dl-motivo');if(m)m.value='';var u=$('#dl-uni');if(u)u.value='';_delRender();});
@@ -1586,7 +1605,7 @@ function _syncHtml(){
       '<div class="rtcard"><div class="rl">Último evento</div><div class="rv" style="font-size:14px">'+_fmtAgo(RT.lastEvent)+'</div></div>'+
       '<div class="rtcard"><div class="rl">Recargas de dados</div><div class="rv">'+RT.reloads+'</div></div>'+
       '<div class="rtcard"><div class="rl">Última recarga</div><div class="rv" style="font-size:14px">'+_fmtAgo(RT.lastReload)+'</div></div>'+
-      '<div class="rtcard"><div class="rl">Chamados carregados</div><div class="rv">'+(TICKETS?TICKETS.length:0)+'</div></div>'+
+      '<div class="rtcard"><div class="rl">Chamados carregados</div><div class="rv">'+(typeof activeTickets==='function'?activeTickets().length:(TICKETS?TICKETS.length:0))+'</div></div>'+
       '<div class="rtcard"><div class="rl">Falhas consecutivas</div><div class="rv" style="color:'+(falhas?'var(--bad)':'var(--ink)')+'">'+falhas+'</div></div>'+
       '<div class="rtcard"><div class="rl">Erros Supabase (log)</div><div class="rv">'+sbErr+'</div></div>'+
     '</div>'+
@@ -1613,7 +1632,7 @@ function syncMonitorModal(){
 /* =================== MÉTRICAS POR UNIDADE =================== */
 var UN_FILTER={ini:'',fim:'',sel:''};
 function _unStats(){
-  var data=TICKETS.filter(function(t){return inRange(t.criado,UN_FILTER.ini,UN_FILTER.fim);});
+  var data=activeTickets().filter(function(t){return inRange(t.criado,UN_FILTER.ini,UN_FILTER.fim);});
   var m={};
   data.forEach(function(t){var u=t.unidade||'—';if(!m[u])m[u]={u:u,tot:0,ab:0,pr:0,rs:0,fb:0};var o=m[u];o.tot++;
     if(t.status==='Aberto')o.ab++;else if(t.status==='Em Andamento')o.pr++;else if(t.status==='Resolvido')o.rs++;else if(t.status==='Com Feedback')o.fb++;});
@@ -1885,7 +1904,7 @@ function diagNuvem(){
 function fld(id,lab,val,ph){return '<div class="fg"><label>'+esc(lab)+'</label><input type="text" id="'+id+'" value="'+esc(val||'')+'" placeholder="'+esc(ph||'')+'"></div>';}
 var ccb=$('#c-cloud-btn');if(ccb)ccb.addEventListener('click',cloudModal);
 /* =================== RELATÓRIO EXECUTIVO MENSAL (PDF) =================== */
-function monthTickets(){var now=new Date();var y=now.getFullYear(),mo=now.getMonth();return TICKETS.filter(function(t){var d=new Date(t.criado);return !isNaN(d)&&d.getFullYear()===y&&d.getMonth()===mo;});}
+function monthTickets(){var now=new Date();var y=now.getFullYear(),mo=now.getMonth();return activeTickets().filter(function(t){var d=new Date(t.criado);return !isNaN(d)&&d.getFullYear()===y&&d.getMonth()===mo;});}
 /* gera a imagem PNG de um gráfico (a partir da última opção), forçando cores escuras p/ impressão */
 function chartImg(id){
   if(!LASTOPT[id]||!window.echarts)return null;
@@ -1909,7 +1928,7 @@ function gerarPDF(ctx){
   var now=new Date();
   var meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   var ref=meses[now.getMonth()]+' de '+now.getFullYear();
-  var all=TICKETS.slice(), mes=monthTickets();
+  var all=activeTickets().slice(), mes=monthTickets();
   doc.setFontSize(16);doc.setTextColor(60,50,40);doc.text('Relatório Executivo Mensal — Chamados de Manutenção',40,40);
   doc.setFontSize(11);doc.setTextColor(110,100,90);
   doc.text('CTRANS — Secretaria Estadual de Saúde de Pernambuco',40,58);
@@ -1982,9 +2001,9 @@ function ampliarGrafico(id,titulo){
 /* =================== DETALHE POR DUPLO CLIQUE (placa/condutor/lotação) =================== */
 function abrirDetalhe(tp,v){
   if(!tp||!v)return;var list,titulo;
-  if(tp==='placa'){list=TICKETS.filter(function(t){return t.placa===v;});titulo='Veículo · '+v;}
-  else if(tp==='solic'){list=TICKETS.filter(function(t){return t.solic===v;});titulo='Condutor · '+v;}
-  else if(tp==='unidade'){list=TICKETS.filter(function(t){return t.unidade===v;});titulo='Lotação · '+v;}
+  if(tp==='placa'){list=activeTickets().filter(function(t){return t.placa===v;});titulo='Veículo · '+v;}
+  else if(tp==='solic'){list=activeTickets().filter(function(t){return t.solic===v;});titulo='Condutor · '+v;}
+  else if(tp==='unidade'){list=activeTickets().filter(function(t){return t.unidade===v;});titulo='Lotação · '+v;}
   else return;
   list=list.slice().sort(function(a,b){return new Date(b.criado)-new Date(a.criado);});
   var st=countBy(list,function(t){return t.status;});
