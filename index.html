@@ -236,6 +236,23 @@ table.tbl tbody tr:hover{background:var(--bg)}
 .cloudrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--bad);display:inline-block}
 .dot.on{background:var(--ok)}
+/* ===== Aviso de modo (Nuvem vs Local) ===== */
+.modebanner{display:flex;gap:10px;align-items:center;font-size:13px;border-radius:11px;padding:10px 14px;margin:0 0 14px;border:1px solid}
+.modebanner svg{width:18px;height:18px;flex:0 0 auto}
+.modebanner .mb-strong{font-weight:800}
+.modebanner.cloud{color:#2f5c54;background:#e8f1ee;border-color:#cfe2dd}
+.modebanner.local{color:#8a5a43;background:#fef3ee;border-color:#f6d6c4}
+body[data-theme="dark"] .modebanner.cloud{color:#9fd3c6;background:#1f2e2b;border-color:#2f4440}
+body[data-theme="dark"] .modebanner.local{color:#e9c3a9;background:#2e241d;border-color:#4a3a2c}
+/* ===== Monitor de sincronização em tempo real ===== */
+.rtgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px}
+.rtcard{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.rtcard .rl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.rtcard .rv{font-size:17px;font-weight:800;margin-top:3px;color:var(--ink)}
+.rtpill{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;padding:5px 12px;border-radius:999px;border:1px solid var(--line)}
+.rtpill.ok{color:#2f5c54;background:#e8f1ee;border-color:#cfe2dd}
+.rtpill.warn{color:#8a5a43;background:#fef3ee;border-color:#f6d6c4}
+.rtpill.bad{color:#8a3a33;background:#fdecea;border-color:#f3c9c4}
 .cfggrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
 .cfggrid .full{grid-column:1/-1}
 .pill{font-size:11px;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:var(--bg);cursor:pointer;color:var(--ink);display:inline-flex;align-items:center;gap:6px}
@@ -396,6 +413,7 @@ body[data-theme="dark"] .filebox input[type=file]{color:var(--muted)}
       <button class="btn ghost sm" id="m-logout"><i data-lucide="log-out"></i> Sair</button>
     </div>
   </div>
+  <div id="m-mode-banner"></div>
   <div class="hero">
     <div class="eyebrow"><span></span> Acesso Manutenção</div>
     <h1>Abertura e <em>acompanhamento</em> de chamados</h1>
@@ -529,6 +547,7 @@ body[data-theme="dark"] .filebox input[type=file]{color:var(--muted)}
       <button class="btn ghost sm" id="c-logout"><i data-lucide="log-out"></i> Sair</button>
     </div>
   </div>
+  <div id="c-mode-banner"></div>
   <div class="hero">
     <div class="eyebrow"><span></span> Gestão CTRANS</div>
     <h1>Acompanhamento <em>geral</em> de chamados</h1>
@@ -610,6 +629,8 @@ body[data-theme="dark"] .filebox input[type=file]{color:var(--muted)}
         <button class="btn ghost sm del-btn" id="cd-delsel" style="color:var(--bad);border-color:var(--bad)"><i data-lucide="trash-2"></i> Excluir selecionados</button>
         <button class="btn ghost sm" id="cd-dellog"><i data-lucide="history"></i> Painel de excluídos</button>
         <button class="btn ghost sm" id="cd-sblog"><i data-lucide="server-crash"></i> Log de erros Supabase</button>
+        <button class="btn ghost sm" id="cd-audit"><i data-lucide="clipboard-list"></i> Log de auditoria</button>
+        <button class="btn ghost sm" id="cd-sync"><i data-lucide="radio"></i> Monitor de sincronização</button>
       </div>
     </div>
     <div class="tablewrap"><table class="tbl" id="c-tbl"></table></div>
@@ -673,7 +694,37 @@ function cloudOn(){return !!(CLOUD.url&&CLOUD.anon);}
 function emailAuto(){return !!(CLOUD.ejsPub&&CLOUD.ejsService&&CLOUD.ejsTemplate);}
 function initSB(){if(!cloudOn()){SB=null;return;}if(!window.supabase||!window.supabase.createClient){SB=null;try{dispararAlertaCritico('inicializar Supabase','A biblioteca do Supabase não carregou (sem internet ou CDN bloqueado).');}catch(e){}return;}try{SB=window.supabase.createClient(CLOUD.url,CLOUD.anon);}catch(e){SB=null;try{dispararAlertaCritico('inicializar Supabase',_errTxt(e));}catch(_){}}}
 initSB();
-function setCloudBadge(){var on=cloudOn();['m','c'].forEach(function(p){var d=document.getElementById(p+'-cloud-dot'),t=document.getElementById(p+'-cloud-txt');if(d)d.classList.toggle('on',on);if(t)t.textContent=on?'Nuvem: Supabase ativo':'Nuvem: local';});}
+function setCloudBadge(){var on=cloudOn();['m','c'].forEach(function(p){var d=document.getElementById(p+'-cloud-dot'),t=document.getElementById(p+'-cloud-txt');if(d)d.classList.toggle('on',on);if(t)t.textContent=on?'Nuvem: Supabase ativo':'Nuvem: local';});try{renderModeBanner();}catch(e){}}
+/* ===================================================================
+   FEATURE 1 — AVISO VISUAL NUVEM vs LOCAL
+   =================================================================== */
+function renderModeBanner(){
+  var on=cloudOn();
+  var html=on
+    ? '<div class="modebanner cloud"><i data-lucide="cloud"></i><span><span class="mb-strong">Modo Nuvem (Supabase) ativo.</span> Os chamados são salvos online e sincronizados automaticamente entre todos os dispositivos e usuários em tempo real.</span></div>'
+    : '<div class="modebanner local"><i data-lucide="hard-drive"></i><span><span class="mb-strong">Modo Local (somente este navegador).</span> Os dados ficam salvos apenas neste dispositivo e <b>não são compartilhados</b> com outros usuários. Configure a nuvem (botão “Nuvem”) para sincronizar entre dispositivos.</span></div>';
+  ['m-mode-banner','c-mode-banner'].forEach(function(bid){var el=document.getElementById(bid);if(el)el.innerHTML=html;});
+  try{icons();}catch(e){}
+}
+/* ===================================================================
+   FEATURE 3 — MONITORAMENTO DE SINCRONIZAÇÃO EM TEMPO REAL (estado)
+   =================================================================== */
+var RT={status:'desconectado',statusTs:'',events:0,lastEvent:'',reloads:0,lastReload:''};
+function rtSet(st){RT.status=st;RT.statusTs=nowISO();try{syncMonitorRefresh();}catch(e){}}
+function rtEvent(){RT.events++;RT.lastEvent=nowISO();try{syncMonitorRefresh();}catch(e){}}
+function rtReload(){RT.reloads++;RT.lastReload=nowISO();try{syncMonitorRefresh();}catch(e){}}
+function rtInfo(){
+  if(!cloudOn())return {on:false,txt:'Sem nuvem (modo local)',cls:'bad'};
+  var m={'conectado':{txt:'Conectado — tempo real ativo',cls:'ok'},'conectando':{txt:'Conectando ao tempo real…',cls:'warn'},'erro':{txt:'Falha no canal de tempo real',cls:'bad'},'desconectado':{txt:'Desconectado',cls:'bad'}};
+  var r=m[RT.status]||m.conectando;return {on:true,txt:r.txt,cls:r.cls};
+}
+/* ===================================================================
+   FEATURE 2 — LOG DE AUDITORIA (alterações de situação, exclusões, aberturas)
+   =================================================================== */
+var K_AUDIT='ctrans_audit_v1';
+function auditLog(){try{return JSON.parse(localStorage.getItem(K_AUDIT)||'[]');}catch(e){return [];}}
+function auditClear(){try{localStorage.removeItem(K_AUDIT);}catch(e){}}
+function logAudit(acao,t,extra){extra=extra||{};try{var log=auditLog();log.unshift({ts:nowISO(),acao:acao,chamado:(t&&t.id)||extra.chamado||'',placa:(t&&t.placa)||'',unidade:(t&&t.unidade)||'',solic:(t&&t.solic)||'',de:extra.de||'',para:extra.para||'',por:(SUP&&SUP.u)||(typeof MUSER!=='undefined'&&MUSER?MUSER:'')||'CTRANS',detalhe:extra.detalhe||''});if(log.length>5000)log=log.slice(0,5000);save(K_AUDIT,log);}catch(e){}}
 /* ---- LOG DE ERROS DO SUPABASE ---- */
 var K_SBLOG='ctrans_sblog_v1';
 function sbLog(){try{return JSON.parse(localStorage.getItem(K_SBLOG)||'[]');}catch(e){return [];}}
@@ -747,9 +798,9 @@ function _sendHook(titulo,linhas){var url=(CLOUD.webhook||'').trim();if(!url)ret
 }catch(e){}}
 function cloudLoadAll(cb){if(!SB){cb&&cb();return;}try{SB.from(CLOUD.table).select('data').order('created_at',{ascending:false}).then(function(r){
   if(r&&r.error){sbFail('carregar chamados (select)',r.error);cb&&cb();return;}
-  sbOk();if(r&&r.data&&r.data.length){TICKETS=r.data.map(function(x){return x.data;});persistTickets();}cb&&cb();
+  sbOk();if(r&&r.data){TICKETS=r.data.map(function(x){return x.data;});persistTickets();}try{rtReload();}catch(e){}cb&&cb();
 }).catch(function(e){sbFail('carregar chamados (select)',e);cb&&cb();});}catch(e){sbFail('carregar chamados (select)',e);cb&&cb();}}
-function cloudSubscribe(){if(!SB)return;try{SB.channel('chamados_rt').on('postgres_changes',{event:'*',schema:'public',table:CLOUD.table},function(){cloudLoadAll(function(){try{mRender();}catch(e){}try{cRender();}catch(e){}});}).subscribe(function(st){if(st==='CHANNEL_ERROR'||st==='TIMED_OUT')dispararAlertaCritico('sincronização em tempo real','O canal de tempo real do Supabase caiu ('+st+'). As atualizações entre usuários podem não chegar automaticamente.');else if(st==='SUBSCRIBED')limparAlertaCritico();});}catch(e){dispararAlertaCritico('sincronização em tempo real',_errTxt(e));}}
+function cloudSubscribe(){if(!SB){rtSet('desconectado');return;}rtSet('conectando');try{SB.channel('chamados_rt').on('postgres_changes',{event:'*',schema:'public',table:CLOUD.table},function(payload){try{RT.lastEventTipo=(payload&&payload.eventType)||'';}catch(e){}rtEvent();cloudLoadAll(function(){try{mRender();}catch(e){}try{cRender();}catch(e){}});}).subscribe(function(st){if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'){rtSet('erro');dispararAlertaCritico('sincronização em tempo real','O canal de tempo real do Supabase caiu ('+st+'). As atualizações entre usuários podem não chegar automaticamente.');}else if(st==='SUBSCRIBED'){rtSet('conectado');limparAlertaCritico();}else if(st==='CLOSED'){rtSet('desconectado');}else{rtSet('conectando');}});}catch(e){rtSet('erro');dispararAlertaCritico('sincronização em tempo real',_errTxt(e));}}
 cloudSubscribe();
 /* =================== GATE =================== */
 var gate=$('#gate'),choose=$('#choose'),pManut=$('#panel-manut'),pCtrans=$('#panel-ctrans');
@@ -1165,7 +1216,7 @@ $('#form-chamado').addEventListener('submit',function(e){e.preventDefault();
     else if(a&&a.data&&/^data:/.test(a.data))anexB64.push({key:k,name:a.name,type:a.type,data:a.data});});
   Promise.all(keys.map(function(k){return uploadAny(t.anexos[k]);})).then(function(ups){
     keys.forEach(function(k,ix){t.anexos[k]=ups[ix];});
-    TICKETS.unshift(t);persistTickets();cloudInsert(t);notifyWebhook(t);
+    TICKETS.unshift(t);persistTickets();cloudInsert(t);notifyWebhook(t);try{logAudit('Abertura de chamado',t,{detalhe:'Chamado aberto por '+(t.solic||'—')+' — '+(t.unidade||'—')+'.'});}catch(e){}
     $('#c-msg').innerHTML='Chamado <b>'+t.id+'</b> aberto com sucesso! Confirmação '+(emailAuto()?'enviada automaticamente':'direcionada')+' para: '+esc(m.dest.join(', '))+'.'+
       (emailAuto()?'':' <a href="#" id="c-sendmail" style="color:var(--accent);font-weight:700">Enviar e-mail de confirmação agora</a>.');
     var sb=$('#c-sendmail');if(sb)sb.addEventListener('click',function(ev){ev.preventDefault();sendEmail(t,anexB64);});
@@ -1327,8 +1378,10 @@ function cRenderTable(){
   var chkAll=$('#cd-chk-all');if(chkAll)chkAll.addEventListener('change',function(){$$('.del-chk',$('#c-tbl')).forEach(function(c){c.checked=chkAll.checked;});});
   $$('.st-sel',$('#c-tbl')).forEach(function(sel){sel.addEventListener('change',function(){
     var id=sel.getAttribute('data-id');var t=TICKETS.find(function(x){return x.id===id;});if(!t)return;
+    var _de=t.status;
     t.status=sel.value;t.atualizado=nowISO();t.atualizadoPor=SUP?SUP.u:'CTRANS';
-    persistTickets();cloudUpdate(t);notifyWebhookStatus(t);cRenderTable();statusNotifyModal(t);
+    try{if(_de!==t.status)logAudit('Alteração de situação',t,{de:_de,para:t.status,detalhe:'Situação alterada de "'+(_de||'—')+'" para "'+t.status+'".'});}catch(e){}
+    persistTickets();cloudUpdate(t);notifyWebhookStatus(t);cRenderTable();try{mRender();}catch(e){}statusNotifyModal(t);
   });});
   $$('.del-btn',$('#c-tbl')).forEach(function(b){b.addEventListener('click',function(){excluirChamado(b.getAttribute('data-id'));});});
   icons();
@@ -1346,12 +1399,17 @@ function _delModalHtml(titulo,descricao){
 }
 function _doExclusao(ids,motivo,just,obs){
   ids.forEach(function(id){var t=TICKETS.find(function(x){return x.id===id;});if(!t)return;
+    try{logAudit('Exclusão de chamado',t,{detalhe:'Motivo: '+(motivo||'—')+(just?(' — '+just):'')+(obs?(' | Obs.: '+obs):'')});}catch(e){}
     logDel({ts:nowISO(),chamado:id,placa:t.placa,unidade:t.unidade,solic:t.solic,motivo:t.motivo,motivoExcl:motivo,por:SUP?SUP.u:'CTRANS',justificativa:just,obs:obs});
     cloudDelete(id);
   });
   TICKETS=TICKETS.filter(function(x){return ids.indexOf(x.id)<0;});
   persistTickets();
   try{cRenderTable();}catch(e){}try{cRenderStatus();}catch(e){}try{cRenderCharts();}catch(e){}
+  /* Atualiza também o painel do solicitante (mesmo navegador): o chamado some da visão de quem o abriu. */
+  try{mRender();}catch(e){}
+  /* Mantém o Painel de chamados excluídos sincronizado, se estiver aberto. */
+  try{_delRender();}catch(e){}
 }
 function _bindDelModal(ids){
   var cc=$('#del-cancel');if(cc)cc.addEventListener('click',function(){$('#modal').classList.remove('on');});
@@ -1454,6 +1512,104 @@ function exportSbLog(){
   else{var lines=aoa.map(function(r){return r.map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""').replace(/[\n;]/g,' ')+'"';}).join(';');});var blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});var el=document.createElement('a');el.href=URL.createObjectURL(blob);el.download='Relatorio_Erros_Supabase.csv';el.click();}
 }
 var csb=$('#cd-sblog');if(csb)csb.addEventListener('click',sbLogModal);
+var cau=$('#cd-audit');if(cau)cau.addEventListener('click',auditModal);
+var csy=$('#cd-sync');if(csy)csy.addEventListener('click',syncMonitorModal);
+/* ===================================================================
+   FEATURE 2 — MODAL / EXPORTAÇÃO DO LOG DE AUDITORIA
+   =================================================================== */
+var AUDIT_FILTER={ini:'',fim:'',acao:'',unidade:''};
+function _auditFiltrado(){var a=auditLog();var f=AUDIT_FILTER;return a.filter(function(e){
+  if((f.ini||f.fim)&&!inRange(e.ts,f.ini,f.fim))return false;
+  if(f.acao&&(e.acao||'')!==f.acao)return false;
+  if(f.unidade&&(e.unidade||'')!==f.unidade)return false;
+  return true;});}
+function _auditRows(a){return a.length?a.map(function(e){
+  return '<tr><td style="padding:6px;white-space:nowrap">'+esc(fmtDate(e.ts))+'</td><td style="padding:6px">'+esc(e.acao||'')+'</td><td style="padding:6px">'+esc(e.chamado||'')+'</td><td style="padding:6px">'+esc(e.placa||'')+'</td><td style="padding:6px">'+esc(e.unidade||'')+'</td><td style="padding:6px">'+esc(e.de||'—')+'</td><td style="padding:6px">'+esc(e.para||'—')+'</td><td style="padding:6px">'+esc(e.por||'')+'</td><td style="padding:6px;color:var(--muted)">'+esc(e.detalhe||'')+'</td></tr>';
+}).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:14px">Nenhum registro de auditoria no período.</td></tr>';}
+function _auditRender(){var a=_auditFiltrado();var tb=$('#au-tbody');if(tb)tb.innerHTML=_auditRows(a);var tot=$('#au-total');if(tot)tot.textContent=a.length;}
+function auditModal(){
+  var a=_auditFiltrado();var full=auditLog();
+  var _uniq=function(arr){return arr.filter(function(v){return v;}).filter(function(v,i,x){return x.indexOf(v)===i;}).sort();};
+  var acoes=_uniq(full.map(function(e){return e.acao||'';}));
+  var unids=_uniq(full.map(function(e){return e.unidade||'';}));
+  var optA='<option value="">Todas as ações</option>'+acoes.map(function(m){return '<option'+(m===AUDIT_FILTER.acao?' selected':'')+'>'+esc(m)+'</option>';}).join('');
+  var optU='<option value="">Todas as unidades</option>'+unids.map(function(u){return '<option'+(u===AUDIT_FILTER.unidade?' selected':'')+'>'+esc(u)+'</option>';}).join('');
+  var inSty='padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:13px;width:100%';
+  var bar='<div class="filterbar">'+
+    '<div class="fb-head"><i data-lucide="sliders-horizontal"></i> Filtros da auditoria</div>'+
+    '<div class="fg"><label>De</label><input type="date" id="au-ini" value="'+esc(AUDIT_FILTER.ini)+'" style="'+inSty+'"></div>'+
+    '<div class="fg"><label>Até</label><input type="date" id="au-fim" value="'+esc(AUDIT_FILTER.fim)+'" style="'+inSty+'"></div>'+
+    '<div class="fg"><label>Ação</label><select id="au-acao" style="'+inSty+'">'+optA+'</select></div>'+
+    '<div class="fg"><label>Unidade</label><select id="au-uni" style="'+inSty+'">'+optU+'</select></div>'+
+    '<div class="fb-actions"><button class="btn sm" id="au-filtrar"><i data-lucide="filter"></i> Filtrar</button>'+
+    '<button class="btn ghost sm" id="au-limpar"><i data-lucide="x"></i> Limpar</button></div></div>';
+  openModal('<h3 style="margin:0 0 6px"><i data-lucide="clipboard-list" style="width:18px;height:18px;vertical-align:-3px"></i> Log de auditoria</h3><p style="color:var(--muted);font-size:13px;margin:0 0 10px">Registro de <b>alterações de situação</b>, <b>aberturas</b> e <b>exclusões</b> de chamados, com autor, data e detalhes. Exibindo: <b id="au-total">'+a.length+'</b> registro(s).</p>'+bar+'<div style="max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:7px">Data/hora</th><th style="text-align:left;padding:7px">Ação</th><th style="text-align:left;padding:7px">Chamado</th><th style="text-align:left;padding:7px">Placa</th><th style="text-align:left;padding:7px">Unidade</th><th style="text-align:left;padding:7px">De</th><th style="text-align:left;padding:7px">Para</th><th style="text-align:left;padding:7px">Autor</th><th style="text-align:left;padding:7px">Detalhe</th></tr></thead><tbody id="au-tbody">'+_auditRows(a)+'</tbody></table></div>'+
+    '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn ghost" id="au-xlsx"><i data-lucide="file-spreadsheet"></i> Exportar para Excel</button><button class="btn ghost" id="au-clear" style="color:var(--bad);border-color:var(--bad)"><i data-lucide="trash-2"></i> Limpar log</button></div>');
+  var fb=$('#au-filtrar');if(fb)fb.addEventListener('click',function(){AUDIT_FILTER.ini=($('#au-ini').value||'');AUDIT_FILTER.fim=($('#au-fim').value||'');AUDIT_FILTER.acao=($('#au-acao').value||'');AUDIT_FILTER.unidade=($('#au-uni').value||'');_auditRender();});
+  var lb=$('#au-limpar');if(lb)lb.addEventListener('click',function(){AUDIT_FILTER={ini:'',fim:'',acao:'',unidade:''};auditModal();});
+  var dx=$('#au-xlsx');if(dx)dx.addEventListener('click',exportAuditExcel);
+  var cl=$('#au-clear');if(cl)cl.addEventListener('click',function(){if(confirm('Limpar todo o log de auditoria? Esta ação não pode ser desfeita.')){auditClear();auditModal();}});
+  icons();
+}
+function exportAuditExcel(){
+  var a=_auditFiltrado();
+  var suf=(AUDIT_FILTER.ini||AUDIT_FILTER.fim)?('_'+(AUDIT_FILTER.ini||'inicio')+'_a_'+(AUDIT_FILTER.fim||'fim')):'';
+  var headers=['Data/hora','Ação','Chamado','Placa','Unidade','Solicitante','De','Para','Autor','Detalhe'];
+  var aoa=[headers].concat(a.map(function(e){return [fmtDate(e.ts),e.acao||'',e.chamado||'',e.placa||'',e.unidade||'',e.solic||'',e.de||'',e.para||'',e.por||'',e.detalhe||''];}));
+  if(window.XLSX&&XLSX.utils){
+    var ws=XLSX.utils.aoa_to_sheet(aoa);var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Auditoria');
+    XLSX.writeFile(wb,'Log_Auditoria_Chamados'+suf+'.xlsx');
+  }else{
+    var lines=aoa.map(function(r){return r.map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""').replace(/[\n;]/g,' ')+'"';}).join(';');});
+    var blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+    var el=document.createElement('a');el.href=URL.createObjectURL(blob);el.download='Log_Auditoria_Chamados'+suf+'.csv';el.click();
+  }
+}
+/* ===================================================================
+   FEATURE 3 — MODAL DO MONITOR DE SINCRONIZAÇÃO
+   =================================================================== */
+var SYNC_TIMER=null;
+function _fmtAgo(iso){if(!iso)return '—';var d=new Date(iso);if(isNaN(d))return '—';var s=Math.floor((Date.now()-d.getTime())/1000);if(s<0)s=0;if(s<60)return 'há '+s+'s';var mn=Math.floor(s/60);if(mn<60)return 'há '+mn+' min';var h=Math.floor(mn/60);if(h<24)return 'há '+h+'h';return fmtDate(iso);}
+function _syncHtml(){
+  var i=rtInfo();var on=i.on;
+  var falhas=(typeof SB_FAILS==='number')?SB_FAILS:0;
+  var sbErr=(typeof sbLog==='function')?sbLog().length:0;
+  var pill='<span class="rtpill '+(on?i.cls:'bad')+'"><span class="dot '+(on&&i.cls==='ok'?'on':'')+'"></span> '+esc(i.txt)+'</span>';
+  return '<h3 style="margin:0 0 6px"><i data-lucide="radio" style="width:18px;height:18px;vertical-align:-3px"></i> Monitor de sincronização em tempo real</h3>'+
+    '<p style="color:var(--muted);font-size:13px;margin:0 0 10px">Acompanhe o estado da conexão com a nuvem (Supabase) e a propagação das alterações entre a CTRANS e os solicitantes. Atualiza automaticamente a cada 3s.</p>'+
+    '<div style="margin-bottom:4px">'+pill+'</div>'+
+    '<div class="rtgrid">'+
+      '<div class="rtcard"><div class="rl">Modo</div><div class="rv">'+(on?'Nuvem (Supabase)':'Local (navegador)')+'</div></div>'+
+      '<div class="rtcard"><div class="rl">Estado do canal</div><div class="rv" style="font-size:14px">'+esc(i.txt)+'</div></div>'+
+      '<div class="rtcard"><div class="rl">Desde</div><div class="rv" style="font-size:14px">'+_fmtAgo(RT.statusTs)+'</div></div>'+
+      '<div class="rtcard"><div class="rl">Eventos recebidos</div><div class="rv">'+RT.events+'</div></div>'+
+      '<div class="rtcard"><div class="rl">Último evento</div><div class="rv" style="font-size:14px">'+_fmtAgo(RT.lastEvent)+'</div></div>'+
+      '<div class="rtcard"><div class="rl">Recargas de dados</div><div class="rv">'+RT.reloads+'</div></div>'+
+      '<div class="rtcard"><div class="rl">Última recarga</div><div class="rv" style="font-size:14px">'+_fmtAgo(RT.lastReload)+'</div></div>'+
+      '<div class="rtcard"><div class="rl">Chamados carregados</div><div class="rv">'+(TICKETS?TICKETS.length:0)+'</div></div>'+
+      '<div class="rtcard"><div class="rl">Falhas consecutivas</div><div class="rv" style="color:'+(falhas?'var(--bad)':'var(--ink)')+'">'+falhas+'</div></div>'+
+      '<div class="rtcard"><div class="rl">Erros Supabase (log)</div><div class="rv">'+sbErr+'</div></div>'+
+    '</div>'+
+    (on?'':'<div class="modebanner local" style="margin-top:12px;margin-bottom:0"><i data-lucide="alert-triangle"></i><span><span class="mb-strong">Sem nuvem configurada.</span> Não há sincronização entre dispositivos — os dados ficam só neste navegador. Configure no botão “Nuvem”.</span></div>')+
+    '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">'+
+      '<button class="btn ghost" id="sync-reload"><i data-lucide="refresh-cw"></i> Recarregar da nuvem agora</button>'+
+      '<button class="btn ghost" id="sync-reconnect"><i data-lucide="plug-zap"></i> Reconectar tempo real</button>'+
+      '<button class="btn ghost" id="sync-sblog"><i data-lucide="server-crash"></i> Ver erros Supabase</button>'+
+    '</div>';
+}
+function _bindSyncButtons(){
+  var r=$('#sync-reload');if(r)r.addEventListener('click',function(){cloudLoadAll(function(){try{mRender();}catch(e){}try{cRender();}catch(e){}syncMonitorRefresh();});});
+  var rc=$('#sync-reconnect');if(rc)rc.addEventListener('click',function(){try{initSB();cloudSubscribe();setCloudBadge();}catch(e){}syncMonitorRefresh();});
+  var sl=$('#sync-sblog');if(sl)sl.addEventListener('click',function(){if(typeof sbLogModal==='function')sbLogModal();});
+}
+function syncMonitorRefresh(){var body=document.getElementById('sync-mon-body');if(!body)return;body.innerHTML=_syncHtml();try{icons();}catch(e){}_bindSyncButtons();}
+function syncMonitorModal(){
+  openModal('<div id="sync-mon-body">'+_syncHtml()+'</div>');
+  _bindSyncButtons();icons();
+  if(SYNC_TIMER){clearInterval(SYNC_TIMER);}
+  SYNC_TIMER=setInterval(function(){if(!document.getElementById('sync-mon-body')){clearInterval(SYNC_TIMER);SYNC_TIMER=null;return;}syncMonitorRefresh();},3000);
+  var mc=$('#modal-close');if(mc)mc.addEventListener('click',function(){if(SYNC_TIMER){clearInterval(SYNC_TIMER);SYNC_TIMER=null;}},{once:true});
+}
 /* =================== MÉTRICAS POR UNIDADE =================== */
 var UN_FILTER={ini:'',fim:'',sel:''};
 function _unStats(){
